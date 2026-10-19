@@ -216,12 +216,24 @@ class IsaacSimRpcRobot(Robot):
         assert arm in ["left", "right"]
         if action is None:
             return
-        time.sleep(0.3)
         if action == "open":
             self.open_gripper(id=arm, width=0.1)
         elif action == "close":
             self.close_gripper(id=arm)
-            time.sleep(0.7)
+        self.wait_gripper_settled(arm)
+
+    def wait_gripper_settled(self, arm, start=0.3, timeout=2.0, still=1e-3):
+        """Return once the fingers stop moving (on the object when closing), instead of the fixed 2 s the gripper used to
+        get: the robot stood still for all of it, which showed as a pause at every grasp and release. `start` lets a
+        command that has not reached the joint yet not pass for a settled gripper; `timeout` is the old total."""
+        time.sleep(start)
+        last, t0 = self.gripper_opening(arm), time.time()
+        while time.time() - t0 < timeout - start:
+            time.sleep(0.1)
+            now = self.gripper_opening(arm)
+            if abs(now - last) < still:
+                return
+            last = now
 
     def move(self, content):
         """

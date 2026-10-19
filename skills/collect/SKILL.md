@@ -197,6 +197,10 @@ Episode dir:
 - `camera/<frame>/`: head and both wrist jpgs.
 - `state.json`: per-frame object and end-effector poses.
 - `task_result.json`: `task_status`, `metric_status`.
+- Idle frames are already gone: the openpi DROID rule on arm + gripper joints (< 1e-3 rad/frame; runs ≥ 7 frames dropped,
+  then fragments < 16 frames without gripper motion), applied in `server/recording/extract_ros_bag.py` like the
+  rollback spans, so images, h5, state.json, videos and LeRobot lose the same frames. `extract.log` says
+  `Idle filter: dropping n/m frames`. `-e ERSIBENCH_KEEP_IDLE=1` keeps them (the raw mcap is deleted afterwards).
 - `data_info.json`: carries `english_task_name`, the training instruction.
 
 LeRobot v2.1:

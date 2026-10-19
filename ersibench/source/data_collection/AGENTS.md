@@ -128,7 +128,7 @@ Two processes, one container, gRPC between them:
 
 | Side | Entry | Key flags | Internals |
 |---|---|---|---|
-| **server** | [`scripts/data_collector_server.py`](scripts/data_collector_server.py) | `--enable_physics --enable_curobo --publish_ros [--headless]` | `server/grpc_server.py`; `controllers/` (kinematics, parallel_gripper, ruckig); `motion_generator/` (cuRobo reacher); `recording/`; `ros_publisher/` (camera/lidar/imu) |
+| **server** | [`scripts/data_collector_server.py`](scripts/data_collector_server.py) | `--enable_physics --enable_curobo --publish_ros [--headless]` | `server/grpc_server.py`; `controllers/` (kinematics, parallel_gripper, ruckig); `motion_generator/` (cuRobo reacher); `recording/`; `ros_publisher/` (camera, tf, joints) |
 | **client** | [`scripts/run_data_collection.py`](scripts/run_data_collection.py) | `--task_template <json> [--use_recording]` | `client/layout/` (layout/task gen) → `client/planner/` (grasp/place/insert/rotate/stage) → `client/agent/omniagent.py` → `client/robot/` (gRPC client) |
 
 The `GetIKStatus` gRPC path returns one three-field record per requested pose:

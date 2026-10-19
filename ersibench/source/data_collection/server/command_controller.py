@@ -30,7 +30,6 @@ from omni.physx.scripts import utils
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade
 
 from common.base_utils.logger import logger
-from common.base_utils.ros_nodes.server_node import ServerNode
 from common.base_utils.transform_utils import mat2quat_wxyz, quat2mat_wxyz
 
 STABLE_GRASP = "?stable_grasp"  # suffix on an attach_obj prim path: also weld the object to the hand
@@ -141,7 +140,6 @@ class CommandController:
         }
         self.task_metric = {}
         self.sensor_base = USDBase()
-        self.ros_node_initialized = False
         self.ros_step = 0  # control pub hz
         self.scene_usd = ""
         self.playback_timerange = []
@@ -1026,9 +1024,6 @@ class CommandController:
                             preexec_fn=os.setsid,
                         )
                         self.process.append(subpro)
-                    if not self.ros_node_initialized:
-                        self.server_ros_node = ServerNode(robot_name=self.robot_name)
-                        self.ros_node_initialized = True
                     self.data_to_send = "Start"
                 else:
                     raise ValueError("publish ros is not enabled")

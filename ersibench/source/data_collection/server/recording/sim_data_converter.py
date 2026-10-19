@@ -12,41 +12,6 @@ import h5py
 import numpy as np
 import pytz
 import yaml
-from scipy.spatial.transform import Rotation as R
-
-
-def sim2real(sim_vec):
-    """sim_vec: Any 6-dimensional vector between 0-1"""
-    real_open = np.array([3.7525, 0.12217, 0.12217, 0.12217, 0.12217, 3.1067])
-    real_close = np.array([3.2289, 3.4208, 3.4208, 3.4208, 3.4208, 1.0472])
-    sim_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 9.3])
-    sim_close = np.array([0.21, 0.838, 0.838, 0.838, 0.838, 0.0])
-
-    sim_vec = np.asarray(sim_vec, dtype=float)
-    denom = sim_close - sim_open
-    scale = np.where(denom == 0, 0.0, (sim_vec - sim_open) / denom)
-    return real_open + (real_close - real_open) * scale
-
-
-def matrix_from_quat_and_pos(quat, pos):
-    """
-    Convert quaternion and position to 4x4 transformation matrix
-    """
-    r = R.from_quat(quat)
-    t = np.eye(4)
-    t[:3, :3] = r.as_matrix()
-    t[:3, 3] = pos
-    return t
-
-
-def quat_and_pos_from_matrix(matrix):
-    """
-    Convert 4x4 transformation matrix to quaternion and position
-    """
-    r = R.from_matrix(matrix[:3, :3]).as_quat()
-    t = matrix[:3, 3]
-
-    return np.concatenate((r, t))
 
 
 def get_directory_size(directory):
@@ -59,10 +24,6 @@ def get_directory_size(directory):
             if not os.path.islink(filepath):
                 total_size += os.path.getsize(filepath)
     return total_size
-
-
-def reverse_relabel_gripper(g_pos):
-    return min(120, max(35, 120 - (120 - 35) * pow((g_pos), 2)))
 
 
 def omnipicker_reverse_relabel_gripper(g_pos):

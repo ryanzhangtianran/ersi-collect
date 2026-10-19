@@ -3,7 +3,6 @@ colorama
 grasp_nms
 grpcio
 h5py
-numba
 numpy==1.26.4
 open3d
 openmesh

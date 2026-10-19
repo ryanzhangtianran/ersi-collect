@@ -90,9 +90,18 @@ docker logs -f ersi_pick     # 看进度：round R done: +g, d / 50
 | `BATCH` | 20 | 每轮最多尝试几次 |
 | `MAX_ROUNDS` | 25 | 最多跑几轮 |
 | `CONVERT` | 1 | 设成 0 就不转 LeRobot |
+| `ERSIBENCH_KEEP_IDLE` | 不设 | 设成 1 就保留静止帧（默认会过滤掉，见下） |
 | `ERSIBENCH_OOD_AXES` | 不设 | 采 OOD 数据，例如 `light,camera_pose` |
 
 - 停止：`docker rm -f ersi_pick`。已经成功的数据会保留；用同样的命令重新运行，会接着已有的条数继续采。
+
+保存时会过滤静止帧，规则沿用 openpi DROID 的 idle filter（`examples/droid/compute_droid_nonidle_ranges.py`）：
+
+- 一帧里所有手臂和夹爪关节的位移都小于 1e-3 rad，就算静止帧；
+- 连续 7 帧以上的静止段会被删掉，更短的停顿保留，保证动作连贯；
+- 删完之后，不足 16 帧的零碎片段也会删掉；但只要片段里夹爪在动就保留，不会把抓取、松开的动作删掉。
+
+图片、h5、state.json、视频、LeRobot 都删同样的帧，帧数保持一致。实测一条 episode 从 32.5 s 缩到 12.9 s，剩下的静止帧占 9%。阶段之间原来固定等待 1 s，夹爪动作后固定等待 2 s，现在都去掉了，改成等夹爪真正停稳就继续，采一条也更快。
 
 输出目录结构：
 

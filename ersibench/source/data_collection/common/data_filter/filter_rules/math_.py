@@ -4,86 +4,10 @@
 
 # This file stores some additional math calculation related functions
 
-"""
-Determine if current gripper is grasping object
-gripper center and object center need to be within threshold, gripper cannot be in open state
-Position changes of gripper and object between two consecutive frames need to be within threshold
-"""
-
 from ast import Tuple
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-
-
-def is_gripper_grasp_object(
-    frames: list,
-    frame_index: int,
-    gripper: str = "'right",
-    obj: str = None,
-    gripper_close_threshold: float = 0.85,
-    gripper_grasp_obj_finger_pos_change_threshold: float = 0.02,
-    pos_threshold: list = [0.03, 0.03, 0.03],
-    pos_change_threshold: list = [0.01, 0.01, 0.01],
-    backtrack_frame_num: int = 5,
-) -> bool:
-    # Gripper must be closed and nearly motionless within backtrack_frame_num frames
-    gripper_joint_index = 20 if gripper == "right" else 18
-    gripper_finger_joint_pos = abs(frames[frame_index]["robot"]["joints"]["joint_position"][gripper_joint_index])
-    if gripper_finger_joint_pos > gripper_close_threshold:
-        return False
-    if frame_index < backtrack_frame_num:
-        return False
-    gripper_finger_joint_pos_last = abs(
-        frames[frame_index - backtrack_frame_num]["robot"]["joints"]["joint_position"][gripper_joint_index]
-    )
-    if abs(gripper_finger_joint_pos - gripper_finger_joint_pos_last) >= gripper_grasp_obj_finger_pos_change_threshold:
-        return False
-
-    object_pos = np.array(frames[frame_index]["objects"][obj]["pose"])[:3, 3]
-    gripper_pos = np.array(frames[frame_index]["ee"][gripper]["pose"])[:3, 3]
-
-    # Gripper needs to be near object
-    pos_eror = np.abs(object_pos - gripper_pos)
-    if np.all(pos_eror < np.array(pos_threshold)):
-        # Within backtrack_frame_num frames, object and gripper move the same
-        if frame_index < backtrack_frame_num:
-            return False
-        object_pos_last = np.array(frames[frame_index - backtrack_frame_num]["objects"][obj]["pose"])[:3, 3]
-        gripper_pos_last = np.array(frames[frame_index - backtrack_frame_num]["ee"][gripper]["pose"])[:3, 3]
-
-        object_pos_change = object_pos - object_pos_last
-        gripper_pos_change = gripper_pos - gripper_pos_last
-
-        pos_change_error = np.abs(object_pos_change - gripper_pos_change)
-        if np.all(pos_change_error < np.array(pos_change_threshold)):
-            return True
-
-    return False
-
-
-# Get distance from gripper to an object
-def get_dis_gripper2object(current_frame: dict, gripper: str = "right", obj: str = None):
-    obj_pos = np.array(current_frame["objects"][obj]["pose"])[:3, 3]
-    gripper_pos = np.array(current_frame["ee"][gripper]["pose"])[:3, 3]
-
-    dis = np.sqrt(np.sum((obj_pos - gripper_pos) ** 2))
-
-    return dis
-
-
-# Whether gripper is completely closed, joint threshold 0.01
-def is_gripper_close_complete(
-    current_frame: dict,
-    gripper: str = "right",
-    finger_joint_pos_threshold: float = 0.01,
-):
-    gripper_joint_index = 20 if gripper == "right" else 18
-    gripper_finger_joint_pos = abs(current_frame["robot"]["joints"]["joint_position"][gripper_joint_index])
-
-    if gripper_finger_joint_pos < finger_joint_pos_threshold:
-        return True
-    return False
 
 
 def check_pose_similar(

@@ -873,9 +873,7 @@ class DataCollectionAgent(BaseAgent):
                 action_description=action_description,
                 error_description=error_data,
             )
-            self.robot.set_gripper_action(gripper_action, arm=arm)
-            if set_gripper_open or set_gripper_close:
-                time.sleep(1.0)
+            self.robot.set_gripper_action(gripper_action, arm=arm)  # returns once the fingers have settled
 
             self.robot.client.set_frame_state(
                 action_type,
@@ -1144,8 +1142,7 @@ class DataCollectionAgent(BaseAgent):
 
             if stage.action_type == "grasp":
                 last_pick_arm = stage.extra_params.get("arm", "right")
-            time.sleep(1)
-            stage_id += 1
+            stage_id += 1  # straight on: the 1 s pause that used to sit here only showed as a stop in every episode
 
         if not task_success:
             success = False

@@ -17,40 +17,6 @@ class USDBase:
         self.ros_domain_id = (int)(ros_domain_id)
         logger.info(f"ROS domain ID: {self.ros_domain_id}")
 
-    def step(self):
-        pass
-
-    def init_all_sensors(self):
-        if "sensors" in self.config:
-            for sensor in self.config["sensors"]:
-                if sensor["type"] == "Camera":
-                    self._init_camera(sensor)
-                if sensor["type"] == "Lidar":
-                    self._init_lidar(sensor)
-                if sensor["type"] == "IMU":
-                    self._init_imu(sensor)
-
-    def _init_lidar(self, param):
-        from omni.isaac.sensor import LidarRtx
-
-        from .lidar import publish_lidar_pointcloud, publish_lidar_scan
-
-        lidar = LidarRtx(prim_path=param["path"])
-        lidar.initialize()
-        approx_freq = param["frequency"]
-        for publish in param["publish"]:
-            if publish is None:
-                continue
-            split = publish.split(":", 2)
-            topic = ""
-            if len(split) > 1:
-                publish = split[0]
-                topic = split[1]
-            if publish == "pointcloud":
-                publish_lidar_pointcloud(lidar, approx_freq, topic)
-            elif publish == "scan":
-                publish_lidar_scan(lidar, approx_freq, topic)
-
     def _init_camera(self, param):
         from isaacsim.sensors.camera import Camera
 
@@ -113,36 +79,6 @@ class USDBase:
 
         # Note: camera.initialize() already called above, no need to call again
         return camera_graph, ros_nodes
-
-    def _init_imu(self, param):
-        from omni.isaac.sensor import IMUSensor
-
-        from .imu import publish_imu
-
-        imu = IMUSensor(prim_path=param["path"])
-        # imu.initialize()
-        approx_freq = param["frequency"]
-        for publish in param["publish"]:
-            if publish is None:
-                continue
-            split = publish.split(":", 2)
-            topic = ""
-            if len(split) > 1:
-                publish = split[0]
-                topic = split[1]
-            else:
-                topic = param["path"] + "_imu"
-            if publish == "imu":
-                publish_imu(imu, approx_freq, topic)
-
-    def reset_graph(self):
-        ros_tf_graph_path = "/World/RobotTFActionGraph"
-
-        set_target_prims(
-            primPath=ros_tf_graph_path + "/RosPublishTransformTree",
-            inputName="inputs:targetPrims",
-            targetPrimPaths=[],
-        )
 
     def publish_tf(self, robot_prim, targets, approx_freq, delta_time):
         ros_tf_graph_path = "/World/RobotTFActionGraph"
@@ -269,28 +205,3 @@ class USDBase:
             step_size=step_size,
         )
         return node
-
-    def publish_clock(self, clock_graph_path="/ClockActionGraph"):
-        ros_clock_graph_path = clock_graph_path
-        og.Controller.edit(
-            {
-                "graph_path": ros_clock_graph_path,
-                "evaluator_name": "execution",
-                "pipeline_stage": og.GraphPipelineStage.GRAPH_PIPELINE_STAGE_SIMULATION,
-            },
-            {
-                og.Controller.Keys.CREATE_NODES: [
-                    ("OnPlaybackTick", "omni.graph.action.OnPlaybackTick"),
-                    ("RosContext", "isaacsim.ros2.bridge.ROS2Context"),
-                    ("RosPublisher", "isaacsim.ros2.bridge.ROS2PublishClock"),
-                ],
-                og.Controller.Keys.CONNECT: [
-                    ("OnPlaybackTick.outputs:tick", "RosPublisher.inputs:execIn"),
-                    ("OnPlaybackTick.outputs:time", "RosPublisher.inputs:timeStamp"),
-                    ("RosContext.outputs:context", "RosPublisher.inputs:context"),
-                ],
-                og.Controller.Keys.SET_VALUES: [
-                    ("RosContext.inputs:domain_id", self.ros_domain_id),
-                ],
-            },
-        )

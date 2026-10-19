@@ -11,7 +11,6 @@ NOTE: convention for quaternions is (x, y, z, w)
 import math
 
 import numpy as np
-from numba import njit
 from scipy.spatial.transform import Rotation as R
 
 PI = np.pi
@@ -160,23 +159,6 @@ def quat_inverse(quaternion):
     return quat_conjugate(quaternion) / np.dot(quaternion, quaternion)
 
 
-def mat2pose(hmat):
-    """
-    Converts a homogeneous 4x4 matrix into pose.
-
-    Args:
-        hmat (np.array): a 4x4 homogeneous matrix
-
-    Returns:
-        2-tuple:
-            - (np.array) (x,y,z) position array in cartesian coordinates
-            - (np.array) (x,y,z,w) orientation array in quaternion form
-    """
-    pos = hmat[:3, 3]
-    orn = mat2quat(hmat[:3, :3])
-    return pos, orn
-
-
 def mat2quat(rmat):
     """
     Converts given rotation matrix to quaternion.
@@ -257,20 +239,6 @@ def quat2mat(quaternion):
     return R.from_quat(quaternion).as_matrix()
 
 
-def quat2axisangle(quat):
-    """
-    Converts quaternion to axis-angle format.
-    Returns a unit vector direction scaled by its angle in radians.
-
-    Args:
-        quat (np.array): (x,y,z,w) vec4 float angles
-
-    Returns:
-        np.array: (ax,ay,az) axis-angle exponential coordinates
-    """
-    return R.from_quat(quat).as_rotvec()
-
-
 def euler2quat(euler, order="xyz"):
     """
     Converts euler angles into quaternion form
@@ -286,23 +254,6 @@ def euler2quat(euler, order="xyz"):
         AssertionError: [Invalid input shape]
     """
     return R.from_euler(order, euler).as_quat()
-
-
-def quat2euler(quat, order="xyz"):
-    """
-    Converts quaternion to euler angles.
-
-    Args:
-        quat (np.array): (x,y,z,w) float quaternion angles
-        order (str): Euler angle order, e.g., "xyz", "zyx", "yxz", etc. Defaults to "xyz".
-
-    Returns:
-        np.array: (r,p,y) angles in radians
-
-    Raises:
-        AssertionError: [Invalid input shape]
-    """
-    return R.from_quat(quat).as_euler(order)
 
 
 def pose_inv(pose_mat):
@@ -332,32 +283,6 @@ def pose_inv(pose_mat):
     pose_inv[:3, 3] = -pose_inv[:3, :3].dot(pose_mat[:3, 3])
     pose_inv[3, 3] = 1.0
     return pose_inv
-
-
-def _skew_symmetric_translation(pos_A_in_B):
-    """
-    Helper function to get a skew symmetric translation matrix for converting quantities
-    between frames.
-
-    Args:
-        pos_A_in_B (np.array): (x,y,z) position of A in frame B
-
-    Returns:
-        np.array: 3x3 skew symmetric translation matrix
-    """
-    return np.array(
-        [
-            0.0,
-            -pos_A_in_B[2],
-            pos_A_in_B[1],
-            pos_A_in_B[2],
-            0.0,
-            -pos_A_in_B[0],
-            -pos_A_in_B[1],
-            pos_A_in_B[0],
-            0.0,
-        ]
-    ).reshape((3, 3))
 
 
 def rotation_matrix(angle, direction, point=None):
@@ -418,87 +343,6 @@ def rotation_matrix(angle, direction, point=None):
     return M
 
 
-def clip_translation(dpos, limit):
-    """
-    Limits a translation (delta position) to a specified limit
-
-    Scales down the norm of the dpos to 'limit' if norm(dpos) > limit, else returns immediately
-
-    Args:
-        dpos (n-array): n-dim Translation being clipped (e,g.: (x, y, z)) -- numpy array
-        limit (float): Value to limit translation by -- magnitude (scalar, in same units as input)
-
-    Returns:
-        2-tuple:
-
-            - (np.array) Clipped translation (same dimension as inputs)
-            - (bool) whether the value was clipped or not
-    """
-    input_norm = np.linalg.norm(dpos)
-    return (dpos * limit / input_norm, True) if input_norm > limit else (dpos, False)
-
-
-def clip_rotation(quat, limit):
-    """
-    Limits a (delta) rotation to a specified limit
-
-    Converts rotation to axis-angle, clips, then re-converts back into quaternion
-
-    Args:
-        quat (np.array): (x,y,z,w) rotation being clipped
-        limit (float): Value to limit rotation by -- magnitude (scalar, in radians)
-
-    Returns:
-        2-tuple:
-
-            - (np.array) Clipped rotation quaternion (x, y, z, w)
-            - (bool) whether the value was clipped or not
-    """
-    clipped = False
-
-    # First, normalize the quaternion
-    quat = quat / np.linalg.norm(quat)
-
-    den = np.sqrt(max(1 - quat[3] * quat[3], 0))
-    if den == 0:
-        # This is a zero degree rotation, immediately return
-        return quat, clipped
-    else:
-        # This is all other cases
-        x = quat[0] / den
-        y = quat[1] / den
-        z = quat[2] / den
-        a = 2 * math.acos(quat[3])
-
-    # Clip rotation if necessary and return clipped quat
-    if abs(a) > limit:
-        a = limit * np.sign(a) / 2
-        sa = math.sin(a)
-        ca = math.cos(a)
-        quat = np.array([x * sa, y * sa, z * sa, ca])
-        clipped = True
-
-    return quat, clipped
-
-
-def make_pose(translation, rotation):
-    """
-    Makes a homogeneous pose matrix from a translation vector and a rotation matrix.
-
-    Args:
-        translation (np.array): (x,y,z) translation value
-        rotation (np.array): a 3x3 matrix representing rotation
-
-    Returns:
-        pose (np.array): a 4x4 homogeneous matrix
-    """
-    pose = np.zeros((4, 4))
-    pose[:3, :3] = rotation
-    pose[:3, 3] = translation
-    pose[3, 3] = 1.0
-    return pose
-
-
 def unit_vector(data, axis=None, out=None):
     """
     Returns ndarray normalized by length, i.e. eucledian norm, along axis.
@@ -555,117 +399,6 @@ def unit_vector(data, axis=None, out=None):
     data /= length
     if out is None:
         return data
-
-
-def get_orientation_diff_in_radian(orn0, orn1):
-    """
-    Returns the difference between two quaternion orientations in radian
-
-    Args:
-        orn0 (np.array): (x, y, z, w)
-        orn1 (np.array): (x, y, z, w)
-
-    Returns:
-        orn_diff (float): orientation difference in radian
-    """
-    vec0 = quat2axisangle(orn0)
-    vec0 /= np.linalg.norm(vec0)
-    vec1 = quat2axisangle(orn1)
-    vec1 /= np.linalg.norm(vec1)
-    return np.arccos(np.dot(vec0, vec1))
-
-
-def get_pose_error(target_pose, current_pose):
-    """
-    Computes the error corresponding to target pose - current pose as a 6-dim vector.
-    The first 3 components correspond to translational error while the last 3 components
-    correspond to the rotational error.
-
-    Args:
-        target_pose (np.array): a 4x4 homogenous matrix for the target pose
-        current_pose (np.array): a 4x4 homogenous matrix for the current pose
-
-    Returns:
-        np.array: 6-dim pose error.
-    """
-    error = np.zeros(6)
-
-    # compute translational error
-    target_pos = target_pose[:3, 3]
-    current_pos = current_pose[:3, 3]
-    pos_err = target_pos - current_pos
-
-    # compute rotational error
-    r1 = current_pose[:3, 0]
-    r2 = current_pose[:3, 1]
-    r3 = current_pose[:3, 2]
-    r1d = target_pose[:3, 0]
-    r2d = target_pose[:3, 1]
-    r3d = target_pose[:3, 2]
-    rot_err = 0.5 * (np.cross(r1, r1d) + np.cross(r2, r2d) + np.cross(r3, r3d))
-
-    error[:3] = pos_err
-    error[3:] = rot_err
-    return error
-
-
-def matrix_inverse(matrix):
-    """
-    Helper function to have an efficient matrix inversion function.
-
-    Args:
-        matrix (np.array): 2d-array representing a matrix
-
-    Returns:
-        np.array: 2d-array representing the matrix inverse
-    """
-    return np.linalg.inv(matrix)
-
-
-def vecs2axisangle(vec0, vec1):
-    """
-    Converts the angle from unnormalized 3D vectors @vec0 to @vec1 into an axis-angle representation of the angle
-
-    Args:
-        vec0 (np.array): (..., 3) (x,y,z) 3D vector, possibly unnormalized
-        vec1 (np.array): (..., 3) (x,y,z) 3D vector, possibly unnormalized
-    """
-    # Normalize vectors
-    vec0 = normalize(vec0, axis=-1)
-    vec1 = normalize(vec1, axis=-1)
-
-    # Get cross product for direction of angle, and multiply by arcos of the dot product which is the angle
-    return np.cross(vec0, vec1) * np.arccos((vec0 * vec1).sum(-1, keepdims=True))
-
-
-def vecs2quat(vec0, vec1, normalized=False):
-    """
-    Converts the angle from unnormalized 3D vectors @vec0 to @vec1 into a quaternion representation of the angle
-
-    Args:
-        vec0 (np.array): (..., 3) (x,y,z) 3D vector, possibly unnormalized
-        vec1 (np.array): (..., 3) (x,y,z) 3D vector, possibly unnormalized
-        normalized (bool): If True, @vec0 and @vec1 are assumed to already be normalized and we will skip the
-            normalization step (more efficient)
-    """
-    # Normalize vectors if requested
-    if not normalized:
-        vec0 = normalize(vec0, axis=-1)
-        vec1 = normalize(vec1, axis=-1)
-
-    # Half-way Quaternion Solution -- see https://stackoverflow.com/a/11741520
-    cos_theta = np.sum(vec0 * vec1, axis=-1, keepdims=True)
-    quat_unnormalized = np.where(
-        cos_theta == -1,
-        np.array([1.0, 0, 0, 0]),
-        np.concatenate([np.cross(vec0, vec1), 1 + cos_theta], axis=-1),
-    )
-    return quat_unnormalized / np.linalg.norm(quat_unnormalized, axis=-1, keepdims=True)
-
-
-def l2_distance(v1, v2):
-    """Returns the L2 distance between vector v1 and v2."""
-    return np.linalg.norm(np.array(v1) - np.array(v2))
 
 
 def frustum(left, right, bottom, top, znear, zfar):

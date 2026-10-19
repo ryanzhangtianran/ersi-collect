@@ -6,6 +6,7 @@ import asyncio
 import concurrent.futures
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -60,6 +61,34 @@ except ImportError:
     )
 
 count = 0
+
+IDLE_JOINTS = re.compile(r"arm|gripper")  # head, waist and chassis never move while collecting
+
+
+def _runs(mask):
+    """(start, end) of every run of True in a 1-D bool array, end exclusive."""
+    edges = np.diff(np.r_[False, mask, False].astype(int))
+    return list(zip(np.where(edges == 1)[0], np.where(edges == -1)[0]))
+
+
+def idle_frames(positions, gripper, still=1e-3, min_idle=7, min_move=16):
+    """Frames to drop as idle: the openpi DROID filter (examples/droid/compute_droid_nonidle_ranges.py) on joint
+    positions. A frame is idle when no joint moved more than `still` rad since the previous one; runs of at least
+    `min_idle` idle frames go (shorter pauses stay, so motion is not chopped), then kept runs shorter than `min_move`
+    go too unless a gripper (columns `gripper`) moves in them: DROID's velocity has no gripper, but here the arm stands
+    still while the fingers close, and that must stay. An episode with no motion at all is kept whole."""
+    positions = np.asarray(positions, dtype=float)
+    step = np.abs(np.diff(positions, axis=0))
+    idle = np.r_[False, step.max(axis=1) < still]
+    grip_moves = np.r_[False, step[:, gripper].max(axis=1) >= still] if len(gripper) else np.zeros(len(positions), bool)
+    drop = np.zeros(len(positions), bool)
+    for a, b in _runs(idle):
+        if b - a >= min_idle:
+            drop[a:b] = True
+    for a, b in _runs(~drop):
+        if b - a < min_move and not grip_moves[a:b].any():
+            drop[a:b] = True
+    return np.zeros(len(positions), bool) if drop.all() else drop
 
 
 def make_json_serializable(value):
@@ -622,6 +651,31 @@ class RosExtrater:
             self.segmenation_image_json[img_id] = {}
         self.segmenation_image_json[img_id][file_name] = result
 
+    def idle_timerange(self, reader, frame_stamps):
+        """[t0, t1] spans of the frames idle_frames drops, skipped exactly like playback ranges so every output (images,
+        videos, h5, state.json, stage labels) loses the same frames. ERSIBENCH_KEEP_IDLE=1 keeps them."""
+        connections = [c for c in reader.connections if c.topic == "/joint_states"]
+        if os.environ.get("ERSIBENCH_KEEP_IDLE") == "1" or not connections or not frame_stamps:
+            return []
+        try:
+            stamps, rows, cols = [], [], None
+            for connection, _, raw in reader.messages(connections=connections):
+                msg = reader.deserialize(raw, connection.msgtype)
+                position = dict(zip(msg.name, msg.position))
+                cols = cols or [n for n in msg.name if IDLE_JOINTS.search(n)]
+                stamps.append(float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) * 1e-9)
+                rows.append([position[n] for n in cols])
+            order = np.argsort(stamps)
+            stamps, rows = np.asarray(stamps)[order], np.asarray(rows, dtype=float)[order]
+            at = np.searchsorted(stamps, np.asarray(frame_stamps, dtype=float), side="right") - 1
+            drop = idle_frames(rows[np.clip(at, 0, len(stamps) - 1)], [i for i, n in enumerate(cols) if "gripper" in n])
+        except Exception as e:  # the filter is optional: never lose an episode over it
+            logger.warning(f"Idle filter skipped ({e!r}); keeping every frame")
+            return []
+        spans = [[frame_stamps[a], frame_stamps[b - 1]] for a, b in _runs(drop)]
+        logger.info(f"Idle filter: dropping {int(drop.sum())}/{len(drop)} frames in {len(spans)} spans")
+        return spans
+
     async def extract(self):
         typestore = get_typestore(Stores.ROS2_HUMBLE)
         with AnyReader([Path(self.bag_file)], default_typestore=typestore) as reader:
@@ -656,6 +710,8 @@ class RosExtrater:
             temp_idx = np.searchsorted(time_stamps, desired, side="left")
             temp_idx = np.clip(temp_idx, 0, len(time_stamps) - 1)
             time_stamps = time_stamps[temp_idx].tolist()
+            # frames skipped everywhere below: replayed (rolled back) spans and the robot standing still
+            self.skip_timerange = list(self.playback_timerange) + self.idle_timerange(reader, time_stamps)
             chunk_size = 1000
             chunks = [
                 time_stamps[i : i + chunk_size] for i in range(0, len(time_stamps), chunk_size)
@@ -976,7 +1032,7 @@ class RosExtrater:
 
                 for idx, ts in enumerate(chunk):
                     if self.with_img:
-                        if in_playback_time(ts, self.playback_timerange):
+                        if in_playback_time(ts, self.skip_timerange):
                             continue
                         pic_idx += 1
                         depth_dir = self.output_dir + f"/camera_{chunk_index}/{pic_idx}"
@@ -1139,11 +1195,10 @@ class RosExtrater:
                                     "joint_effort": msg.effort.tolist(),
                                 }
                             }
-                        if in_playback_time(ts, self.playback_timerange):
+                        if in_playback_time(ts, self.skip_timerange):
                             skip_frame = True
                             break
                     if skip_frame:
-                        logger.warning(f"Skip frame at {ts}")
                         continue
                     single_frame_state["time_stamp"] = ts
                     frame_idx = -1
