@@ -7,7 +7,9 @@ chunk that runs past the end of a piece is padded with its last frame, and the r
 Rules (not DROID's: there is no filter in the training code, the pieces do the work):
   still frame    what looks still: no hand (end effector) faster than `hand_still` m/s, no gripper joint moved more
                  than `grip_still` rad, no object more than `obj_still` m since the previous frame (a block settling
-                 after release is motion). Joint thresholds kept the slow tails of every move (7 -> 0.4 cm/s over ten
+                 after release is motion). Gripper motion only counts while the gripper is commanded to open or close
+                 (`around_s` either side): an idle gripper's fingers jitter up to ~0.02 rad/frame, which kept up to
+                 2 s of standing still. Joint thresholds kept the slow tails of every move (7 -> 0.4 cm/s over ten
                  frames, creeping at 1-2 cm/s), which look like standing still.
   cut            a run of still frames of at least `min_still_s`, less `margin` frames at each end, so every piece
                  starts and ends at rest
@@ -69,12 +71,25 @@ def ranges(hands, grip, objects, events, fps=30, hand_still=0.01, grip_still=1e-
     return [[a, b] for a, b in _runs(~cut) if not still[a + 1:b].all()]
 
 
-def episode_inputs(episode_dir):
+def gate_gripper(grip, commanded, around):
+    """Gripper positions with every change outside the commanded spans (+- `around` frames) held at the previous value,
+    so only commanded opening / closing counts as gripper motion."""
+    grip = np.array(grip, dtype=float)
+    active = np.convolve(np.asarray(commanded, dtype=int), np.ones(2 * around + 1, dtype=int), "same") > 0
+    for t in range(1, len(grip)):
+        if not active[t]:
+            grip[t] = grip[t - 1]
+    return grip
+
+
+def episode_inputs(episode_dir, fps=30):
     """ranges() inputs from an episode's state.json."""
     frames = json.loads((Path(episode_dir) / "state.json").read_text())["frames"]
     names = frames[0]["robot"]["joints"]["joint_name"]
     q = np.array([f["robot"]["joints"]["joint_position"] for f in frames])
-    grip = q[:, [i for i, name in enumerate(names) if "gripper" in name]]
+    commanded = [bool(f["frame_state"].get("set_gripper_open") or f["frame_state"].get("set_gripper_close")) for f in frames]
+    grip = gate_gripper(q[:, [i for i, name in enumerate(names) if "gripper" in name]], commanded,
+                        int(round(DEFAULTS["around_s"] * fps)))
     sides = list(frames[0]["ee"])
     hands = np.array([[np.array(f["ee"][s]["pose"])[:3, 3] for s in sides] for f in frames]).reshape(len(frames), len(sides), 3)
     ids = list(frames[0]["objects"])
