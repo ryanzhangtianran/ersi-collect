@@ -12,6 +12,7 @@ import time
 from extract_ros_bag import RosExtrater
 from recording.sim_data_converter import SimDataConverter
 
+from common import sample_ranges
 from common.base_utils.logger import logger
 from common.data_filter.check_collected_data import filter_folder_data
 
@@ -83,6 +84,13 @@ if __name__ == "__main__":
         encoding="utf-8",
     ) as f:
         json.dump(result, f, ensure_ascii=False)
+
+    # Which frames training uses (pieces between long still stretches); every frame stays on disk.
+    try:
+        pieces = sample_ranges.write(path_to_save)
+        logger.info(f"Sample ranges: {pieces['kept']}/{pieces['frames']} frames in {len(pieces['ranges'])} pieces")
+    except Exception as e:  # optional: the converter falls back to whole episodes without the file
+        logger.warning(f"Sample ranges skipped: {e!r}")
 
     # Delete raw recordings only after every downstream stage completed.
     for name in os.listdir(path_to_save):

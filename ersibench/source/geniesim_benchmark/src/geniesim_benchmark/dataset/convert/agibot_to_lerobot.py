@@ -355,13 +355,14 @@ def _hevc_encoder_args() -> list:
     return ["-vcodec", "libx265", "-crf", "24", "-sc_threshold", "0"]
 
 
-def encode_videos(agibot_dir: Path, output_dir: Path, episode_index: int, fps: float = 30.0):
+def encode_videos(agibot_dir: Path, output_dir: Path, episode_index: int, fps: float = 30.0, start: int = 0, count=None):
     """Encode RGB camera images into MP4 videos using ffmpeg.
 
     RGB videos:  HEVC (hevc_nvenc CQ 28, else libx265 CRF 24: same SSIM, NVENC ~1.3x the size),
                  yuv420p, keyframe every 8 frames
     Output path: videos/{chunk}/{video_key}/episode_{index:06d}.mp4
     where video_key matches the LeRobot feature key, e.g. observation.images.hand_left.
+    start / count: encode camera frames start .. start + count - 1 only (one sample range of the episode).
     """
     camera_dir = agibot_dir / "camera"
     chunk_name = f"chunk-{episode_index // 1000:03d}"
@@ -381,8 +382,11 @@ def encode_videos(agibot_dir: Path, output_dir: Path, episode_index: int, fps: f
                 "4",
                 "-r",
                 str(int(fps)),
+                "-start_number",
+                str(start),
                 "-i",
                 input_pattern,
+                *(["-frames:v", str(count)] if count is not None else []),
                 *_hevc_encoder_args(),
                 "-pix_fmt",
                 "yuv420p",
@@ -422,9 +426,10 @@ def detect_episodes(agibot_root: Path) -> list:
 
 
 def convert_episode(
-    agibot_dir: Path, output_dir: Path, episode_index: int, lerobot_template, fps: float = 30.0
+    agibot_dir: Path, output_dir: Path, episode_index: int, lerobot_template, fps: float = 30.0, frames=None
 ) -> dict:
-    """Convert a single agibot episode. Returns dict with stats."""
+    """Convert a single agibot episode, or only its frames [start, end) when `frames` is given (one sample range,
+    common/sample_ranges.py). Returns dict with stats."""
     import h5py
     import pyarrow as pa
     import pyarrow.parquet as pq
@@ -459,8 +464,9 @@ def convert_episode(
         joint_eff_all = f_h5_all["state"]["joint"]["effort"][:]
         joint_vel_all = f_h5_all["state"]["joint"]["velocity"][:]
 
+        start, end = frames if frames is not None else (0, len(frame_ids))
         states, actions, timestamps = [], [], []
-        for i, fid in enumerate(frame_ids):
+        for i, fid in enumerate(frame_ids[start:end], start):
             action_dict, state_dict, ts_ns = read_h5_frame(f_h5, fid)
             joint_all_dict = {
                 "joint": {"position": joint_pos_all[i], "effort": joint_eff_all[i], "velocity": joint_vel_all[i]}
@@ -469,7 +475,7 @@ def convert_episode(
             actions.append(build_action(action_dict))
             timestamps.append(ts_ns)
 
-    num_frames = len(frame_ids)
+    num_frames = end - start
 
     # Use ideal timestamps: frame_index / fps (matches v2.1 reference format)
     ideal_timestamps = [i / fps for i in range(num_frames)]
@@ -502,7 +508,7 @@ def convert_episode(
     print(f"  Wrote {parquet_path} ({num_frames} frames)")
 
     # Encode videos
-    encode_videos(agibot_dir, output_dir, episode_index, fps=fps)
+    encode_videos(agibot_dir, output_dir, episode_index, fps=fps, start=start, count=num_frames)
 
     return {"episode_index": episode_index, "length": num_frames}
 
@@ -563,7 +569,11 @@ def _frame_to_index(value, default: int) -> int:
     return int(value) - 1
 
 
-def _build_instruction_metadata(agibot_dir: Path, episode_length: int, fallback_task: str) -> tuple[dict, list]:
+def _build_instruction_metadata(
+    agibot_dir: Path, episode_length: int, fallback_task: str, offset: int = 0
+) -> tuple[dict, list]:
+    """Instruction segments of an episode, or of a piece of it starting at frame `offset` (frame indices shifted to
+    the piece; segments outside it are left out)."""
     data_info = _load_episode_data_info(agibot_dir)
     action_config = _episode_action_config(data_info)
     max_frame_index = max(episode_length - 1, 0)
@@ -587,6 +597,9 @@ def _build_instruction_metadata(agibot_dir: Path, episode_length: int, fallback_
             print(f"WARN: skip action_config item {idx} with invalid frame in {agibot_dir}: {exc}")
             continue
 
+        start_index, end_index = start_index - offset, end_index - offset
+        if end_index < 0 or start_index > max_frame_index:
+            continue
         start_index = _clamp(start_index, 0, max_frame_index)
         end_index = _clamp(end_index, 0, max_frame_index)
         if end_index < start_index:
@@ -637,7 +650,7 @@ def _dataset_task_name(agibot_dirs: list) -> str:
     return "Unknown task"
 
 
-def generate_meta(output_dir: Path, episode_info: list, agibot_dirs: list):
+def generate_meta(output_dir: Path, episode_info: list, agibot_dirs: list, offsets=None):
     """Generate info.json, tasks.jsonl, episodes.jsonl, episodes_stats.jsonl."""
     import numpy as np
     import pyarrow.parquet as pq
@@ -779,7 +792,9 @@ def generate_meta(output_dir: Path, episode_info: list, agibot_dirs: list):
         h5_path[str(i)] = f"frame://{ep_dir}/aligned_joints.h5"
         episode_task_name = _load_episode_task_name(ep_dir) or task_name
         episode_length = int(episode_lengths.get(i, 0))
-        hl_instruction, segments = _build_instruction_metadata(ep_dir, episode_length, episode_task_name)
+        hl_instruction, segments = _build_instruction_metadata(
+            ep_dir, episode_length, episode_task_name, offset=offsets[i] if offsets else 0
+        )
         high_level_instruction[str(i)] = hl_instruction
         instruction_segments[str(i)] = segments
         intervention_info[str(i)] = {}
