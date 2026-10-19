@@ -3,3 +3,4 @@
 /out/
 /ersi_work/
 __pycache__/
+*.tar.zst.part

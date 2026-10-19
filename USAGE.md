@@ -37,11 +37,12 @@ sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart doc
 
 ### 2.2 加载镜像
 
-镜像包含 Isaac Sim，压缩后约 30 GB，不放在公开的镜像仓库里，需要向维护者要 `ersibench-collect.tar.zst`。拿到后加载：
+镜像包含 Isaac Sim，压缩后约 34 GB，超过 git 和 GitHub 的文件大小限制，所以不在仓库的 git 历史里。需要向维护者要 `ersibench-collect.tar.zst` 和 `ersibench-collect.tar.zst.sha256`：维护者那边这两个文件放在仓库根目录下，已经被 `.gitignore` 排除，不会提交。拿到后先校验，再加载：
 
 ```bash
 sudo apt install -y zstd
-zstd -dc ersibench-collect.tar.zst | docker load
+sha256sum -c ersibench-collect.tar.zst.sha256     # 输出 OK 再继续
+zstd -dc ersibench-collect.tar.zst | docker load  # 会加载 ersibench-collect:latest，以及对应 ERSI-Bench 提交号的标签
 docker run --rm --gpus device=0 -e NVIDIA_VISIBLE_DEVICES=0 --entrypoint nvidia-smi ersibench-collect:latest -L   # 应列出一张卡
 ```
 
@@ -164,5 +165,7 @@ docker run --rm -v $O:/output ersibench-collect:latest video pick_biggest_block
 ```bash
 ./sync_from_ersibench.sh ~/Repos/ERSI-Bench [commit]   # 从 ERSI-Bench 同步 ersibench/ 快照；不要直接改快照
 docker build -t ersibench-collect:latest .             # 需要本地有 geniesim3-data-collection:latest
-docker save ersibench-collect:latest | zstd -T0 > ersibench-collect.tar.zst
+docker tag ersibench-collect:latest ersibench-collect:$(cat ersibench/SOURCE_COMMIT)
+docker save ersibench-collect:latest ersibench-collect:$(cat ersibench/SOURCE_COMMIT) | zstd -T0 > ersibench-collect.tar.zst
+sha256sum ersibench-collect.tar.zst > ersibench-collect.tar.zst.sha256
 ```
