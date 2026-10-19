@@ -234,7 +234,7 @@ docker build -t ersibench-collect:latest .             # 默认以 ersibench-col
 ```bash
 docker tag ersibench-collect:latest ersibench-collect:$(cat ersibench/SOURCE_COMMIT)
 docker save ersibench-collect:latest ersibench-collect:$(cat ersibench/SOURCE_COMMIT) | zstd -T0 > ersibench-collect.tar.zst
-sha256sum ersibench-collect.tar.zst > ersibench-collect.tar.zst.sha256   # 把 .sha256 提交到仓库
+sha256sum ersibench-collect.tar.zst > ersibench-collect.tar.zst.sha256   # 和文件一起发出去
 ```
 
 拿到文件的人先校验，再加载：
@@ -243,5 +243,3 @@ sha256sum ersibench-collect.tar.zst > ersibench-collect.tar.zst.sha256   # 把 .
 sha256sum -c ersibench-collect.tar.zst.sha256
 zstd -dc ersibench-collect.tar.zst | docker load
 ```
-
-注意：仓库里现有的那份 `.sha256`，对应的是 2026-10-19 基于内部镜像导出的文件。那份文件里的 cuRobo 只编译了 sm_120，只能在 RTX 50 系上做规划。
