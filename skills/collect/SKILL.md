@@ -105,7 +105,7 @@ Contract:
 
 ```bash
 nvidia-smi --query-gpu=index,name,driver_version,memory.used --format=csv,noheader   # driver >= 570; GPU idle (~17 GB needed)
-docker images | grep ersibench-collect                       # image loaded (zstd -dc ersibench-collect.tar.zst | docker load)
+docker images | grep ersibench-collect                       # image built (USAGE §2.2) or loaded from a tar.zst
 docker run --rm --gpus device=0 -e NVIDIA_VISIBLE_DEVICES=0 --entrypoint nvidia-smi ersibench-collect:latest -L   # toolkit works: lists exactly one GPU
 test -f <ASSETS>/pyproject.toml && echo ASSETS_OK
 df -BG --output=avail <OUT> | tail -1                        # >= 80 GB: raw mcap reaches 10 GB per attempt before extraction
@@ -228,21 +228,25 @@ The output dir must not exist or must be empty.
 cd ~/Repos/ERSI-Collect
 ./sync_from_ersibench.sh ~/Repos/ERSI-Bench 9396cdd   # refresh ersibench/ from a commit (git archive); omit the ref for the
                                                       # working tree; records it in ersibench/SOURCE_COMMIT
-docker build -t ersibench-collect:latest .       # needs registry.agibot.com/genie-sim/geniesim3-data-collection:latest locally
+docker build -f base.Dockerfile -t ersibench-collect-base .   # once (~1 h); mirrors / CUDA_ARCHS: see its header
+docker build -t ersibench-collect:latest .       # the code layer, seconds
 docker run --rm --gpus device=0 -e NVIDIA_VISIBLE_DEVICES=0 -e BATCH=2 -e MAX_ROUNDS=1 \
     -v <ASSETS>:/assets:ro -v /tmp/ersi_smoke:/output ersibench-collect:latest pick_biggest_block 1   # smoke test
 docker save ersibench-collect:latest | zstd -T0 > ersibench-collect.tar.zst
 ```
 
 - `ersibench/` is a copy. Change code in ERSI-Bench, sync, rebuild; never edit the snapshot here.
-- `--build-arg PIP_INDEX=https://pypi.org/simple` outside China; the default is the tuna mirror.
-- Supporting more GPU architectures means rebuilding the base image with a wider `TORCH_CUDA_ARCH_LIST`
-  (ERSI-Bench `source/data_collection/dockerfile`), not this one.
+- More GPU architectures: rebuild the base with `--build-arg CUDA_ARCHS="8.6;8.9;9.0;12.0"` (cuRobo has no PTX
+  fallback: an unlisted GPU cannot plan). Check with `cuobjdump --list-elf` on `curobo/curobolib/*.so`.
+- The base must keep `CUROBO_TORCH_CUDA_GRAPH_RESET=1` (without it every grasp fails with "changing goal type not
+  supported in cuda graph mode") and warp-lang 1.17 / scipy 1.13.1, the versions the internal image collects with.
 
 ## Files
 
 - `entrypoint.sh`: the collection loop and conversion; installed as `/usr/local/bin/ersibench-collect`.
-- `Dockerfile`: base image, plus h5py/pyarrow for the converter, plus `ersibench/` at `/opt/ersibench`.
+- `base.Dockerfile`: nvcr.io Isaac Sim 5.1 + ROS 2 Jazzy (bag record, image_transport) + CUDA 12.8 + cuRobo v0.7.6 +
+  the collector's pip deps; built once.
+- `Dockerfile`: `BASE` (default `ersibench-collect-base`) plus `ersibench/` at `/opt/ersibench` and the entrypoint.
 - `sync_from_ersibench.sh`: the list of what the image takes from ERSI-Bench.
 - Inside the image:
   - `/opt/ersibench/source/data_collection` (also `/geniesim/main/data_collection`): tasks, scenes, collector;

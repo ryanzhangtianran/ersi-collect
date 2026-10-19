@@ -8,14 +8,15 @@ Full procedure (preconditions, monitoring, troubleshooting, stop, verify): [`ski
 
 ## Host requirements
 
-- NVIDIA driver ≥ 570 (CUDA 12.8), Docker ≥ 19.03, nvidia-container-toolkit. Any distro (Ubuntu 20.04 works; the image is 24.04).
-- GPU: Ada (RTX 40xx, L40) or Blackwell (RTX 50xx). cuRobo is built for sm_89 / sm_120 only.
+- A recent NVIDIA driver (tested with 580; CUDA 12.8 inside), Docker ≥ 19.03, nvidia-container-toolkit. Any distro.
+- GPU: RTX 40xx / L40 (sm_89) and RTX 50xx (sm_120) by default; others via `--build-arg CUDA_ARCHS=...` on the base.
 - A geniesim_assets checkout (~47 GB), shipped separately from the image.
 
-## Run
+## Build (once), then run
 
 ```bash
-zstd -dc ersibench-collect.tar.zst | docker load
+docker build -f base.Dockerfile -t ersibench-collect-base .   # once, ~1 h: Isaac Sim 5.1 (nvcr.io) + ROS 2 + CUDA + cuRobo
+docker build -t ersibench-collect:latest .                    # seconds; again after every git pull
 docker run --rm ersibench-collect:latest                     # usage
 docker run --rm -v $PWD/ersi_work:/work ersibench-collect:latest list   # tasks (built-in + yours), backgrounds
 
@@ -44,13 +45,15 @@ Options (`-e`): `BATCH` attempts per round (20), `MAX_ROUNDS` (25), `ROUND_TIMEO
 (e.g. `light,camera_pose`, output under `<TASK>__light+camera_pose/`), `CONVERT=0` to skip LeRobot.
 Shader cache across runs (saves minutes per start): `-v ersi-isaac-cache:/isaac-sim/.cache -v ersi-isaac-cc:/isaac-sim/.nv/ComputeCache`.
 
-## Build and ship
+Mirrors for building inside mainland China (NVIDIA registry, apt, ROS, CUDA, pip) and the GPU list: the header of
+`base.Dockerfile` and USAGE.md §2.2.
+
+## Maintainers
 
 ```bash
-./sync_from_ersibench.sh ~/Repos/ERSI-Bench 9396cdd   # refresh ersibench/ from a commit (omit it: working tree);
-                                                      # writes ersibench/SOURCE_COMMIT
-docker build -t ersibench-collect:latest .     # base image geniesim3-data-collection:latest must be present
-docker save ersibench-collect:latest | zstd -T0 > ersibench-collect.tar.zst
+./sync_from_ersibench.sh ~/Repos/ERSI-Bench <commit>   # refresh ersibench/ (omit the commit: working tree)
+docker build -t ersibench-collect:latest .             # on ersibench-collect-base; the internal image works too:
+                                                       #   --build-arg BASE=registry.agibot.com/genie-sim/geniesim3-data-collection:latest
 ```
 
 `ersibench/` is a snapshot of the parts of ERSI-Bench the image needs (`source/data_collection`, the background

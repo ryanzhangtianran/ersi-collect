@@ -7,15 +7,15 @@ ERSI-Collect 把 ERSI-Bench 的数据采集打包成一个 Docker 镜像 `ersibe
 - 结束时自动转成 LeRobot v2.1 数据集；
 - 可以给每条 episode 生成一段三路相机拼接的视频。
 
-宿主机上只需要 Docker 和 NVIDIA 驱动，不需要装 conda、Isaac Sim 或源码。镜像自带一个任务 `pick_biggest_block`（拿起最大的积木）；其他任务按 `skills/create-task/SKILL.md` 自己写，放在挂载进容器的目录里，不用重新构建镜像。
+宿主机上只需要 Docker 和 NVIDIA 驱动，不需要装 conda、Isaac Sim 或源码。镜像在本地用仓库里的 Dockerfile 构建：基础层一次构建（约 1 小时），之后代码更新只需重建很薄的代码层（几秒）。镜像自带一个任务 `pick_biggest_block`（拿起最大的积木）；其他任务按 `skills/create-task/SKILL.md` 自己写，放在挂载进容器的目录里，不用重新构建镜像。
 
 ## 1. 环境要求
 
 | 项目 | 要求 |
 |---|---|
 | 系统 | 任意 Linux 发行版，Ubuntu 20.04 / 22.04 / 24.04 都可以（镜像内部是 24.04） |
-| GPU | RTX 40 系、L40（Ada）或 RTX 50 系（Blackwell），显存 ≥ 24 GB。cuRobo 只编译了 sm_89 / sm_120，A100、3090、H100 用不了 |
-| 驱动 | NVIDIA 驱动 ≥ 570（CUDA 12.8） |
+| GPU | 默认支持 RTX 40 系、L40（sm_89）和 RTX 50 系（sm_120），显存 ≥ 24 GB。其他型号在构建时用 `CUDA_ARCHS` 加上：3090/A10 是 8.6，H100 是 9.0 |
+| 驱动 | 建议用新驱动（测过 580）。镜像里是 CUDA 12.8，靠 CUDA 小版本兼容在 ≥ 525 的驱动上一般也能跑；Isaac Sim 5.1 对 550 是否可用还没实测 |
 | 磁盘 | 镜像约 110 GB（解压后）；assets 约 47 GB；输出目录至少留 80 GB（单次尝试的原始录制最多约 10 GB，处理完会删） |
 
 ## 2. 安装
@@ -35,26 +35,43 @@ sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
 sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker
 ```
 
-### 2.2 加载镜像
+### 2.2 构建镜像
 
-镜像包含 Isaac Sim，压缩后约 34 GB，超过 git 和 GitHub 的文件大小限制，所以不在仓库的 git 历史里。需要向维护者要 `ersibench-collect.tar.zst` 和 `ersibench-collect.tar.zst.sha256`：维护者那边这两个文件放在仓库根目录下，已经被 `.gitignore` 排除，不会提交。拿到后先校验，再加载：
+分两层构建：
+
+- `base.Dockerfile`：基础层，从 NVIDIA 公开的 `nvcr.io/nvidia/isaac-sim:5.1.0` 开始，装 ROS 2 Jazzy、CUDA 12.8、cuRobo 和采集依赖。只需构建一次。
+- `Dockerfile`：代码层，只放代码。每次更新代码后重建，几秒钟就好。
 
 ```bash
-sudo apt install -y zstd
-sha256sum -c ersibench-collect.tar.zst.sha256     # 输出 OK 再继续
-zstd -dc ersibench-collect.tar.zst | docker load  # 会加载 ersibench-collect:latest，以及对应 ERSI-Bench 提交号的标签
+git clone https://github.com/ryanzhangtianran/ersi-collect.git && cd ersi-collect
+
+# 1) 基础层，构建一次（约 1 小时，需要约 110 GB 磁盘）
+docker build -f base.Dockerfile -t ersibench-collect-base .
+#    在国内用镜像源，速度会快很多：
+docker build -f base.Dockerfile -t ersibench-collect-base \
+    --build-arg ISAACSIM_REGISTRY=nvcr.m.daocloud.io/nvidia \
+    --build-arg APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu \
+    --build-arg ROS_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu \
+    --build-arg CUDA_REPO=https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2404/x86_64 \
+    --build-arg PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple .
+#    其他 GPU：再加 --build-arg CUDA_ARCHS="8.6;8.9;9.0;12.0"
+
+# 2) 代码层，每次 git pull 之后都重建一次（几秒）
+docker build -t ersibench-collect:latest .
+
 docker run --rm --gpus device=0 -e NVIDIA_VISIBLE_DEVICES=0 --entrypoint nvidia-smi ersibench-collect:latest -L   # 应列出一张卡
 ```
 
-如果手上有基础镜像 `geniesim3-data-collection:latest`，也可以自己构建（见第 7 节）。
+**更新代码**：`git pull && docker build -t ersibench-collect:latest .` 即可，基础层不用重建。
+
+也可以直接加载维护者导出的镜像文件（`ersibench-collect.tar.zst`，约 34 GB；文件太大，不放进 git）。先用 `sha256sum -c ersibench-collect.tar.zst.sha256` 校验，再执行 `zstd -dc ersibench-collect.tar.zst | docker load`。注意：当前导出的那份文件里的 cuRobo 只编译了 RTX 50 系（sm_120），40 系等其他卡请按上面的步骤自己构建。
 
 ### 2.3 下载 assets
 
 assets 是 GenieSim 的物体、场景和机器人模型库，托管在 ModelScope，用 git-lfs 下载，约 47 GB：
 
 ```bash
-git clone https://github.com/ryanzhangtianran/ersi-collect.git && cd ersi-collect
-sudo apt install -y git-lfs
+sudo apt install -y git-lfs                # 在 ersi-collect 目录下
 ./download_assets.sh                      # 下载到 ./geniesim_assets；中断后重跑会接着下
 ./download_assets.sh /data/geniesim_assets   # 或者下载到别的位置
 ```
@@ -164,7 +181,9 @@ docker run --rm -v $O:/output ersibench-collect:latest video pick_biggest_block
 
 ```bash
 ./sync_from_ersibench.sh ~/Repos/ERSI-Bench [commit]   # 从 ERSI-Bench 同步 ersibench/ 快照；不要直接改快照
-docker build -t ersibench-collect:latest .             # 需要本地有 geniesim3-data-collection:latest
+docker build -t ersibench-collect:latest .             # 基础层是 ersibench-collect-base（2.2）；用内部镜像时加
+                                                       #   --build-arg BASE=registry.agibot.com/genie-sim/geniesim3-data-collection:latest
+# 下面只在需要分发镜像文件时用
 docker tag ersibench-collect:latest ersibench-collect:$(cat ersibench/SOURCE_COMMIT)
 docker save ersibench-collect:latest ersibench-collect:$(cat ersibench/SOURCE_COMMIT) | zstd -T0 > ersibench-collect.tar.zst
 sha256sum ersibench-collect.tar.zst > ersibench-collect.tar.zst.sha256
