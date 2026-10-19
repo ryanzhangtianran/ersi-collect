@@ -198,10 +198,11 @@ Episode dir:
 - `state.json`: per-frame object and end-effector poses.
 - `task_result.json`: `task_status`, `metric_status`.
 - `sample_ranges.json`: the frame ranges training uses (`common/sample_ranges.py`, written after extraction; every frame
-  stays on disk). A still frame = arm joints < 1e-4 rad, gripper joints < 1e-3, objects < 1 mm since the previous frame.
-  Cuts are still runs ≥ 0.3 s (2 rest frames kept at each end; no cut that would remove < 0.2 s); a run within 0.33 s
-  of a gripper command or an attach / detach keeps 0.2 s at each end instead, and so does the pause after the last
-  motion. ~35 % of frames left out, ~17 % of the kept ones still (the slowing-down ends of moves). The LeRobot converter makes one episode per range (no time jumps
+  stays on disk). A still frame looks still: hand (end effector) < 1 cm/s, gripper joints < 1e-3 rad, objects < 1 mm
+  since the previous frame (so the slow tails of moves count, a closing gripper or a settling block does not). Cuts are
+  still runs ≥ 0.2 s (2 frames kept at each end, ≤ 1 cm/s there; no cut under 0.1 s); a run within 0.33 s of a gripper
+  command or an attach / detach keeps 0.1 s at each end, and so does the pause after the last motion. Episodes start
+  0.1 s before the hand moves. ~43 % of frames left out, 16 % of the kept ones look still (gripper closing / opening). The LeRobot converter makes one episode per range (no time jumps
   inside an episode, so action chunks stay continuous); `--whole-episodes` makes one per recording. Recompute or sweep
   thresholds on existing episodes: `python -m common.sample_ranges <episode dir>... [--sweep] [--write]`.
 - `data_info.json`: carries `english_task_name`, the training instruction.

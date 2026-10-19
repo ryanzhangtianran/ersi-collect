@@ -15,7 +15,8 @@ usage:
   docker run --rm [-v <work>:/work] ersibench-collect:latest check TASK   schema + scene file + stage sequence
   $RUN ersibench-collect:latest layouts TASK [N=10]    N layouts offline (no Isaac server) -> /output/layouts/TASK/
   docker run --rm -v <out>:/output ersibench-collect:latest video TASK   one mp4 per passed episode (left wrist |
-                                                     head | right wrist) -> /output/videos/TASK/
+                                                     head | right wrist) of the frames training uses -> /output/videos/TASK/
+                                                     (-e VIDEO_RAW=1: the whole recording)
 
   /work (optional) holds your own tasks: /work/scenes/<scene>.json, /work/tasks/<TASK>/g2/<TASK>.json; copied over
   the built-in ones at every start (yours win on a name clash).
@@ -95,7 +96,15 @@ PY
         T="${2:-}"; ls -d "/output/recording_data/$T"/\[* >/dev/null 2>&1 || die "no episodes in /output/recording_data/$T"
         mkdir -p "/output/videos/$T"
         for e in "/output/recording_data/$T"/\[*; do   # camera/<frame>/<cam>_color.jpg at 30 fps
-            ( cd "$e/camera" && ffmpeg -hide_banner -loglevel error -y \
+            src="$e/camera"
+            if [ "${VIDEO_RAW:-0}" != 1 ] && [ -f "$e/sample_ranges.json" ]; then
+                # what training gets: the frames of sample_ranges.json, back to back, as numbered links
+                src=$(mktemp -d); i=0
+                for f in $(python3 -c 'import json, sys; [print(f) for a, b in json.load(open(sys.argv[1]))["ranges"] for f in range(a, b)]' "$e/sample_ranges.json"); do
+                    ln -s "$e/camera/$f" "$src/$i"; i=$((i + 1))
+                done
+            fi
+            ( cd "$src" && ffmpeg -hide_banner -loglevel error -y \
                 -framerate 30 -i %d/hand_left_color.jpg -framerate 30 -i %d/head_color.jpg -framerate 30 -i %d/hand_right_color.jpg \
                 -filter_complex "[0]scale=-2:528[l];[1]scale=-2:528[h];[2]scale=-2:528[r];[l][h][r]hstack=inputs=3" \
                 -c:v libx264 -pix_fmt yuv420p -crf 23 "/output/videos/$T/${e##*/}.mp4" ) && echo "/output/videos/$T/${e##*/}.mp4"
