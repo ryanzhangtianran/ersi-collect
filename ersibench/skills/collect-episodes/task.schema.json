@@ -1,0 +1,850 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "ERSI collection task json (tasks/<task>/g2/<task>.json)",
+ "description": "What the robot does in a scene. Check: python3 skills/collect-episodes/task_schema.py <file>",
+ "type": "object",
+ "properties": {
+  "scene_file": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_]+$",
+   "description": "scenes/<scene_file>.json; omit only in a whole template that carries the scene keys itself"
+  },
+  "task": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_]+$",
+   "description": "names the episodes and archive dirs"
+  },
+  "task_description": {
+   "type": "object",
+   "properties": {
+    "task_name": {
+     "type": "string"
+    },
+    "english_task_name": {
+     "type": "string"
+    },
+    "init_scene_text": {
+     "type": "string"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "english_task_name"
+   ],
+   "description": "english_task_name is the training instruction"
+  },
+  "stages": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "$ref": "#/$defs/stage"
+   }
+  },
+  "task_metric": {
+   "type": "object",
+   "properties": {
+    "filter_rules": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "rule_name": {
+        "enum": [
+         "is_object_reach_target",
+         "is_object_pose_similar2start",
+         "is_gripper_in_view",
+         "is_object_end_pose_up",
+         "is_object_end_higher_than_start",
+         "is_objects_distance_greater_than",
+         "is_objects_ordered_along_axis",
+         "is_object_end_in_region",
+         "is_object_grasped_by_gripper",
+         "is_object_relative_position_in_target"
+        ]
+       },
+       "params": {
+        "type": "object"
+       },
+       "result_code": {
+        "type": "integer"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "rule_name",
+       "params"
+      ]
+     }
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "filter_rules"
+   ],
+   "description": "rules run in order after a run; the first failing one rejects the episode"
+  }
+ },
+ "additionalProperties": false,
+ "required": [
+  "task",
+  "task_description",
+  "stages",
+  "task_metric"
+ ],
+ "$defs": {
+  "stage": {
+   "type": "object",
+   "required": [
+    "action"
+   ],
+   "properties": {
+    "action": {
+     "enum": [
+      "grasp",
+      "transition",
+      "ungrasp",
+      "bimanual"
+     ]
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "action": {
+        "const": "grasp"
+       }
+      }
+     },
+     "then": {
+      "$ref": "#/$defs/grasp"
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "action": {
+        "const": "transition"
+       }
+      }
+     },
+     "then": {
+      "$ref": "#/$defs/transition"
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "action": {
+        "const": "ungrasp"
+       }
+      }
+     },
+     "then": {
+      "$ref": "#/$defs/ungrasp"
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "action": {
+        "const": "bimanual"
+       }
+      }
+     },
+     "then": {
+      "$ref": "#/$defs/bimanual"
+     }
+    }
+   ]
+  },
+  "grasp": {
+   "type": "object",
+   "properties": {
+    "action": {
+     "const": "grasp"
+    },
+    "group": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "stages with the same group retry together: give a grasp and the transition that lifts it one group"
+    },
+    "action_description": {
+     "$ref": "#/$defs/description"
+    },
+    "active": {
+     "$ref": "#/$defs/ref"
+    },
+    "passive": {
+     "$ref": "#/$defs/ref"
+    },
+    "checker": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/checker"
+     }
+    },
+    "extra_params": {
+     "type": "object",
+     "properties": {
+      "arm": {
+       "enum": [
+        "left",
+        "right",
+        "auto",
+        "dual"
+       ],
+       "description": "auto: chosen at the first grasp and kept by later stages; dual: expands into a bimanual pair of this stage"
+      },
+      "motion_type": {
+       "enum": [
+        "Simple",
+        "AvoidObs",
+        "Trajectory",
+        "Straight"
+       ],
+       "description": "Simple = straight in joint space; AvoidObs = collision-aware cuRobo plan"
+      },
+      "pos_threshold": {
+       "type": "number"
+      },
+      "skip_check": {
+       "type": "boolean"
+      },
+      "error_data": {
+       "type": "object"
+      },
+      "ik_fallback_rotation_deg": {
+       "type": "number",
+       "minimum": 0
+      },
+      "synchronized_gripper": {
+       "type": "boolean"
+      },
+      "disable_collision_links": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "use_world_pose": {
+       "type": "boolean"
+      },
+      "grasp_offset": {
+       "type": "number",
+       "description": "along the approach, + = deeper (default 0.03)"
+      },
+      "pre_grasp_offset": {
+       "type": "number"
+      },
+      "pre_grasp_distance": {
+       "type": "number",
+       "description": "stop this far before the grasp (default 0.05)"
+      },
+      "pre_grasp_vector": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "pre_grasp_motion_type": {
+       "enum": [
+        "Simple",
+        "AvoidObs",
+        "Trajectory",
+        "Straight"
+       ],
+       "description": "Simple = straight in joint space; AvoidObs = collision-aware cuRobo plan"
+      },
+      "grasp_motion_type": {
+       "enum": [
+        "Simple",
+        "AvoidObs",
+        "Trajectory",
+        "Straight"
+       ],
+       "description": "Simple = straight in joint space; AvoidObs = collision-aware cuRobo plan"
+      },
+      "grasp_lower_percentile": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 100
+      },
+      "grasp_upper_percentile": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 100
+      },
+      "disable_upside_down": {
+       "type": "boolean"
+      },
+      "flip_grasp": {
+       "type": "boolean"
+      },
+      "set_grasp_pose_xy": {
+       "type": "boolean"
+      },
+      "set_grasp_vertical": {
+       "type": "boolean"
+      },
+      "random_grasp_pose": {
+       "type": "boolean"
+      },
+      "fixed_top_grasp": {
+       "type": "boolean"
+      },
+      "fixed_top_grasp_yaws": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "fixed_world_grasp": {
+       "type": "object",
+       "properties": {
+        "approach": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         },
+         "minItems": 3,
+         "maxItems": 3
+        },
+        "close": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         },
+         "minItems": 3,
+         "maxItems": 3
+        },
+        "yaws_deg": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         }
+        },
+        "elevation_deg": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         }
+        },
+        "azimuth_deg": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         }
+        },
+        "samples": {
+         "type": "integer"
+        },
+        "across": {
+         "enum": [
+          "x",
+          "y",
+          "z"
+         ]
+        }
+       },
+       "additionalProperties": false,
+       "required": [
+        "approach"
+       ],
+       "description": "grasp from a world direction instead of labelled grasp poses"
+      },
+      "filter_grasp_pose": {
+       "type": "object"
+      },
+      "humanlike_filter": {
+       "type": "boolean"
+      },
+      "skip_carry_check": {
+       "type": "boolean"
+      },
+      "remove_from_obstacle": {
+       "type": "boolean"
+      },
+      "skip_curobo_grasp_filter": {
+       "type": "boolean"
+      },
+      "grasp_topk_shuffle": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "via_jitter": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "stable_grasp": {
+       "type": "boolean",
+       "description": "weld the object to the hand (cylinders pivot in a parallel gripper)"
+      },
+      "min_grasp_opening": {
+       "type": "number"
+      }
+     },
+     "additionalProperties": false,
+     "required": [
+      "arm"
+     ]
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "action",
+    "passive",
+    "extra_params"
+   ]
+  },
+  "transition": {
+   "type": "object",
+   "properties": {
+    "action": {
+     "const": "transition"
+    },
+    "group": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "stages with the same group retry together: give a grasp and the transition that lifts it one group"
+    },
+    "action_description": {
+     "$ref": "#/$defs/description"
+    },
+    "active": {
+     "$ref": "#/$defs/ref"
+    },
+    "passive": {
+     "$ref": "#/$defs/ref"
+    },
+    "checker": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/checker"
+     }
+    },
+    "extra_params": {
+     "type": "object",
+     "properties": {
+      "arm": {
+       "enum": [
+        "left",
+        "right",
+        "auto",
+        "dual"
+       ],
+       "description": "auto: chosen at the first grasp and kept by later stages; dual: expands into a bimanual pair of this stage"
+      },
+      "motion_type": {
+       "enum": [
+        "Simple",
+        "AvoidObs",
+        "Trajectory",
+        "Straight"
+       ],
+       "description": "Simple = straight in joint space; AvoidObs = collision-aware cuRobo plan"
+      },
+      "pos_threshold": {
+       "type": "number"
+      },
+      "skip_check": {
+       "type": "boolean"
+      },
+      "error_data": {
+       "type": "object"
+      },
+      "ik_fallback_rotation_deg": {
+       "type": "number",
+       "minimum": 0
+      },
+      "synchronized_gripper": {
+       "type": "boolean"
+      },
+      "disable_collision_links": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "use_world_pose": {
+       "type": "boolean"
+      },
+      "target": {
+       "enum": [
+        "world",
+        "hold_offset",
+        "reset"
+       ],
+       "description": "world (default): move by offsets / to a target; hold_offset: straight pick-up after a grasp; reset: arm home"
+      },
+      "carry_object_id": {
+       "type": "string",
+       "description": "the held object; it must follow the hand. Omit to move the empty hand"
+      },
+      "lift_height": {
+       "type": "number"
+      },
+      "target_world_offset": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "target_position": {
+       "type": [
+        "array",
+        "string"
+       ],
+       "description": "[x,y,z] world, or \"origin\" = where the carried object was grasped"
+      },
+      "target_workspace_id": {
+       "type": "string"
+      },
+      "target_prim_path": {
+       "type": "string"
+      },
+      "target_object_id": {
+       "type": "string",
+       "description": "aim at a point of another object (slot, cup mouth)"
+      },
+      "target_object_offset": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "level_object": {
+       "enum": [
+        "x",
+        "y",
+        "z"
+       ]
+      },
+      "level_either_end": {
+       "type": "boolean"
+      },
+      "max_spin_deg": {
+       "type": "number"
+      },
+      "gripper_approach": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "gripper_close": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "min_upright": {
+       "type": "number",
+       "minimum": -1,
+       "maximum": 1
+      },
+      "via_jitter": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "pick_up_distance": {
+       "type": "number"
+      },
+      "pick_up_direction": {
+       "enum": [
+        "x",
+        "y",
+        "z"
+       ]
+      },
+      "plan_type": {
+       "enum": [
+        "Simple",
+        "AvoidObs",
+        "Trajectory",
+        "Straight"
+       ],
+       "description": "Simple = straight in joint space; AvoidObs = collision-aware cuRobo plan"
+      }
+     },
+     "additionalProperties": false,
+     "required": [
+      "arm"
+     ]
+    },
+    "legs": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "$ref": "#/$defs/transition"
+     },
+     "description": "moves of one transition; each is planned after the previous one ran"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "action"
+   ],
+   "if": {
+    "required": [
+     "legs"
+    ]
+   },
+   "else": {
+    "required": [
+     "extra_params"
+    ]
+   }
+  },
+  "ungrasp": {
+   "type": "object",
+   "properties": {
+    "action": {
+     "const": "ungrasp"
+    },
+    "group": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "stages with the same group retry together: give a grasp and the transition that lifts it one group"
+    },
+    "action_description": {
+     "$ref": "#/$defs/description"
+    },
+    "active": {
+     "$ref": "#/$defs/ref"
+    },
+    "passive": {
+     "$ref": "#/$defs/ref"
+    },
+    "checker": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/checker"
+     }
+    },
+    "extra_params": {
+     "type": "object",
+     "properties": {
+      "arm": {
+       "enum": [
+        "left",
+        "right",
+        "auto",
+        "dual"
+       ],
+       "description": "auto: chosen at the first grasp and kept by later stages; dual: expands into a bimanual pair of this stage"
+      },
+      "motion_type": {
+       "enum": [
+        "Simple",
+        "AvoidObs",
+        "Trajectory",
+        "Straight"
+       ],
+       "description": "Simple = straight in joint space; AvoidObs = collision-aware cuRobo plan"
+      },
+      "pos_threshold": {
+       "type": "number"
+      },
+      "skip_check": {
+       "type": "boolean"
+      },
+      "error_data": {
+       "type": "object"
+      },
+      "ik_fallback_rotation_deg": {
+       "type": "number",
+       "minimum": 0
+      },
+      "synchronized_gripper": {
+       "type": "boolean"
+      },
+      "disable_collision_links": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "use_world_pose": {
+       "type": "boolean"
+      },
+      "gripper_state": {
+       "enum": [
+        "open",
+        "close"
+       ]
+      },
+      "retreat": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "direction": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+         },
+         "distance": {
+          "type": "number"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "direction",
+         "distance"
+        ]
+       },
+       "description": "successive moves of the empty hand after release"
+      },
+      "retreat_frame_object_id": {
+       "type": "string",
+       "description": "frame of retreat directions (world when absent)"
+      }
+     },
+     "additionalProperties": false,
+     "required": [
+      "arm"
+     ]
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "action",
+    "extra_params"
+   ]
+  },
+  "bimanual": {
+   "type": "object",
+   "properties": {
+    "action": {
+     "const": "bimanual"
+    },
+    "group": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "stages with the same group retry together: give a grasp and the transition that lifts it one group"
+    },
+    "action_description": {
+     "$ref": "#/$defs/description"
+    },
+    "active": {
+     "$ref": "#/$defs/ref"
+    },
+    "passive": {
+     "$ref": "#/$defs/ref"
+    },
+    "checker": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/checker"
+     }
+    },
+    "extra_params": {
+     "type": "object",
+     "properties": {
+      "arm": {
+       "const": "dual"
+      },
+      "synchronized_gripper": {
+       "type": "boolean"
+      }
+     },
+     "additionalProperties": false
+    },
+    "left": {
+     "$ref": "#/$defs/stage"
+    },
+    "right": {
+     "$ref": "#/$defs/stage"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "action",
+    "left",
+    "right"
+   ],
+   "description": "both arms advance together, one primitive per arm"
+  },
+  "ref": {
+   "type": "object",
+   "properties": {
+    "object_id": {
+     "type": [
+      "string",
+      "array",
+      "object"
+     ]
+    },
+    "primitive": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "part_id": {
+     "type": "string"
+    },
+    "rule": {
+     "type": "string"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "object_id"
+   ]
+  },
+  "description": {
+   "type": "object",
+   "properties": {
+    "action_text": {
+     "type": "string"
+    },
+    "english_action_text": {
+     "type": "string"
+    }
+   },
+   "additionalProperties": false,
+   "description": "{左/右} / {Left/Right} are replaced by the arm used; one {object:<id>} per text"
+  },
+  "checker": {
+   "type": "object",
+   "properties": {
+    "checker_name": {
+     "enum": [
+      "distance_to_target",
+      "local_axis_angle",
+      "prim_clearance"
+     ]
+    },
+    "params": {
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "checker_name",
+    "params"
+   ]
+  }
+ }
+}

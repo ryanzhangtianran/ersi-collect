@@ -1,0 +1,27 @@
+syntax = "proto3";
+package aimdk.protocol;
+
+import public "aimdk/protocol/common/joint.proto";
+
+message BimanualTrajectoryPoint {
+  repeated JointCommand left_joint = 1;
+  repeated JointCommand right_joint = 2;
+}
+
+message BimanualTrajectoryReq {
+  repeated BimanualTrajectoryPoint point = 1;
+  string left_gripper_command = 2;
+  string right_gripper_command = 3;
+  double left_opened_width = 4;
+  double right_opened_width = 5;
+}
+
+message BimanualTrajectoryRsp {
+  bool success = 1;
+  string message = 2;
+}
+
+service BimanualTrajectoryService {
+  rpc move(BimanualTrajectoryReq) returns (BimanualTrajectoryRsp);
+  rpc set_gripper(BimanualTrajectoryReq) returns (BimanualTrajectoryRsp);
+}

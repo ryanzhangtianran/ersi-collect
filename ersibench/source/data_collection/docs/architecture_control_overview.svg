@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640">
+  <defs>
+    <style>
+      .title { font: 700 16px Arial, 'Segoe UI', sans-serif; fill: #111; }
+      .sub { font: 12px Arial, 'Segoe UI', sans-serif; fill: #444; }
+      .node { font: 600 13px Arial, 'Segoe UI', sans-serif; fill: #111; }
+      .node2 { font: 12px Arial, 'Segoe UI', sans-serif; fill: #333; }
+      .label { font: 600 12px Arial, 'Segoe UI', sans-serif; fill: #0b5fff; }
+    </style>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#2f6fed"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#1f8a4c"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#555"/>
+    </marker>
+    <marker id="arrowBlueBi" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto-start-reverse">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#0b5fff"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="640" fill="#ffffff"/>
+
+  <!-- Client subgraph -->
+  <rect x="40" y="80" width="420" height="500" rx="14" fill="#f4f8ff" stroke="#2f6fed" stroke-width="2.5"/>
+  <text x="250" y="112" text-anchor="middle" class="title">Client  ��H�\</text>
+
+  <!-- A1 -->
+  <rect x="90" y="140" width="320" height="70" rx="10" fill="#ffffff" stroke="#2f6fed" stroke-width="1.8"/>
+  <text x="250" y="168" text-anchor="middle" class="node">client/agent/omniagent.py</text>
+  <text x="250" y="190" text-anchor="middle" class="node2">�� step ��</text>
+
+  <line x1="250" y1="210" x2="250" y2="240" stroke="#2f6fed" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <!-- A2 -->
+  <rect x="90" y="240" width="320" height="70" rx="10" fill="#ffffff" stroke="#2f6fed" stroke-width="1.8"/>
+  <text x="250" y="268" text-anchor="middle" class="node">client/planner/action/</text>
+  <text x="250" y="290" text-anchor="middle" class="node2">grasp.py place.py ...</text>
+
+  <line x1="250" y1="310" x2="250" y2="340" stroke="#2f6fed" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <!-- A3 -->
+  <rect x="90" y="340" width="320" height="70" rx="10" fill="#ffffff" stroke="#2f6fed" stroke-width="1.8"/>
+  <text x="250" y="368" text-anchor="middle" class="node">client/robot/omni_robot.py</text>
+  <text x="250" y="390" text-anchor="middle" class="node2">move_pose / 9*</text>
+
+  <line x1="250" y1="410" x2="250" y2="440" stroke="#2f6fed" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <!-- A4 -->
+  <rect x="90" y="440" width="320" height="70" rx="10" fill="#dce9ff" stroke="#2f6fed" stroke-width="2"/>
+  <text x="250" y="468" text-anchor="middle" class="node">client/robot/client.py</text>
+  <text x="250" y="490" text-anchor="middle" class="node2">gRPC (</text>
+
+  <!-- Server subgraph -->
+  <rect x="740" y="80" width="420" height="500" rx="14" fill="#f3fbf6" stroke="#1f8a4c" stroke-width="2.5"/>
+  <text x="950" y="112" text-anchor="middle" class="title">Server  H�</text>
+
+  <!-- B1 -->
+  <rect x="790" y="140" width="320" height="56" rx="10" fill="#d9f2e4" stroke="#1f8a4c" stroke-width="2"/>
+  <text x="950" y="174" text-anchor="middle" class="node">server/grpc_server.py</text>
+
+  <line x1="950" y1="196" x2="950" y2="226" stroke="#1f8a4c" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- B2 -->
+  <rect x="790" y="226" width="320" height="70" rx="10" fill="#ffffff" stroke="#1f8a4c" stroke-width="1.8"/>
+  <text x="950" y="254" text-anchor="middle" class="node">server/command_controller.py</text>
+  <text x="950" y="276" text-anchor="middle" class="node2">}��</text>
+
+  <line x1="950" y1="296" x2="950" y2="326" stroke="#1f8a4c" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- B3 -->
+  <rect x="790" y="326" width="320" height="70" rx="10" fill="#ffffff" stroke="#1f8a4c" stroke-width="1.8"/>
+  <text x="950" y="354" text-anchor="middle" class="node">server/ui_builder.py</text>
+  <text x="950" y="376" text-anchor="middle" class="node2">�� / IK / s�</text>
+
+  <line x1="950" y1="396" x2="950" y2="426" stroke="#1f8a4c" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <!-- B4 -->
+  <rect x="790" y="426" width="320" height="70" rx="10" fill="#ffffff" stroke="#1f8a4c" stroke-width="1.8"/>
+  <text x="950" y="454" text-anchor="middle" class="node">server/motion_generator/</text>
+  <text x="950" y="476" text-anchor="middle" class="node2">motion_gen_reacher.py � cuRobo</text>
+
+  <!-- B2 -> B5 branch -->
+  <path d="M790,261 C720,261 720,545 820,545" fill="none" stroke="#1f8a4c" stroke-width="2" marker-end="url(#arrowGreen)"/>
+  <rect x="820" y="520" width="260" height="40" rx="8" fill="#ffffff" stroke="#1f8a4c" stroke-width="1.8"/>
+  <text x="950" y="546" text-anchor="middle" class="node2">controllers/parallel_gripper.py</text>
+
+  <!-- Loop box on top -->
+  <rect x="790" y="20" width="320" height="42" rx="8" fill="#fff8e8" stroke="#c48a00" stroke-width="1.8"/>
+  <text x="950" y="46" text-anchor="middle" class="node">data_collector_server.py ;��</text>
+  <line x1="950" y1="62" x2="950" y2="226" stroke="#c48a00" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrowGray)"/>
+  <text x="970" y="120" class="sub">q� B2</text>
+
+  <!-- gRPC bidirectional -->
+  <line x1="410" y1="475" x2="790" y2="168" stroke="#0b5fff" stroke-width="2.5"/>
+  <polygon points="790,168 778,164 782,176" fill="#0b5fff"/>
+  <polygon points="410,475 422,479 418,467" fill="#0b5fff"/>
+  <rect x="520" y="290" width="160" height="42" rx="8" fill="#ffffff" stroke="#0b5fff" stroke-width="2"/>
+  <text x="600" y="316" text-anchor="middle" class="label">gRPC :50051</text>
+</svg>

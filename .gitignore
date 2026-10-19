@@ -1,0 +1,5 @@
+*.tar.zst
+/geniesim_assets/
+/out/
+/ersi_work/
+__pycache__/

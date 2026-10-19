@@ -1,0 +1,83 @@
+{
+    "scene_file": "pick_block_size",
+    "stages": [
+        {
+            "action": "grasp",
+            "group": 0,
+            "action_description": {
+                "action_text": "{左/右}臂拿起桌面上的最大积木",
+                "english_action_text": "{Left/Right} arm picks up the biggest block on the table"
+            },
+            "active": {
+                "object_id": "gripper",
+                "primitive": null
+            },
+            "passive": {
+                "object_id": "geniesim_2025_building_blocks_biggest",
+                "primitive": null
+            },
+            "extra_params": {
+                "arm": "auto",
+                "disable_upside_down": true,
+                "flip_grasp": true,
+                "grasp_offset": -0.005
+            }
+        },
+        {
+            "action": "transition",
+            "group": 0,
+            "action_description": {
+                "action_text": "{左/右}臂拿起桌面上的最大积木",
+                "english_action_text": "{Left/Right} arm picks up the biggest block on the table"
+            },
+            "extra_params": {
+                "arm": "auto",
+                "target": "hold_offset",
+                "carry_object_id": "geniesim_2025_building_blocks_biggest",
+                "pick_up_distance": 0.15,
+                "pick_up_direction": "z"
+            }
+        }
+    ],
+    "task_metric": {
+        "filter_rules": [
+            {
+                "params": {
+                    "camera": "head",
+                    "downsample_ratio": 0.2,
+                    "gripper": "right",
+                    "out_view_allow_time": 0.2
+                },
+                "result_code": 4,
+                "rule_name": "is_gripper_in_view"
+            },
+            {
+                "params": {
+                    "camera": "head",
+                    "downsample_ratio": 0.2,
+                    "gripper": "left",
+                    "out_view_allow_time": 0.1
+                },
+                "result_code": 4,
+                "rule_name": "is_gripper_in_view"
+            },
+            {
+                "params": {
+                    "objects": [
+                        "geniesim_2025_building_blocks_biggest"
+                    ],
+                    "delta_z": 0.15,
+                    "tolerance": 0.05
+                },
+                "result_code": 1,
+                "rule_name": "is_object_end_higher_than_start"
+            }
+        ]
+    },
+    "task": "pick_biggest_block",
+    "task_description": {
+        "english_task_name": "Pick up the biggest building block on the table",
+        "init_scene_text": "机器人在桌面前，桌面上放着不同尺寸的积木",
+        "task_name": "拿起最大积木"
+    }
+}

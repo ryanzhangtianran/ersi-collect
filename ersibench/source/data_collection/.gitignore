@@ -1,0 +1,41 @@
+# === pip install / build artifacts ===
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
+pip-build-env-*/
+wheels/
+
+# === Python bytecode (created on import) ===
+__pycache__
+__pycache__/
+*.pyc
+*.pyo
+
+# === data_collection — runtime & content ===
+!output/
+!server/recording
+!config/curobo/assets
+*.jpg
+*.json
+*.mp4
+*.npy
+*.onnx
+*.png
+*.pt
+*.wav
+.vscode
+!tasks/**/*.json
+!scenes/*.json
+!config/robot_cfg/**/*.urdf
+!config/**/*.json
+recording_data
+config/robot_cfg/*/*_tmp.yaml
+tmp/
+logs
+*.png
+**/*.png
+# docker mount point: points at the archive inside the container, always empty on the host
+recording_archive

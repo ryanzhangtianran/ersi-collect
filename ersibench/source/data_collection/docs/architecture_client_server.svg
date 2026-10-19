@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="520" viewBox="0 0 1100 520">
+  <defs>
+    <style>
+      .title { font: 700 18px 'Segoe UI', Arial, sans-serif; fill: #1a1a1a; }
+      .box-title { font: 700 15px 'Segoe UI', Arial, sans-serif; fill: #1a1a1a; }
+      .node { font: 600 13px 'Segoe UI', Arial, sans-serif; fill: #1a1a1a; }
+      .sub { font: 12px 'Segoe UI', Arial, sans-serif; fill: #333; }
+      .arrow-label { font: 12px 'Segoe UI', Arial, sans-serif; fill: #0b5fff; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1100" height="520" fill="#ffffff"/>
+
+  <!-- Client Process -->
+  <rect x="40" y="40" width="420" height="440" rx="12" fill="#f4f8ff" stroke="#2f6fed" stroke-width="2.5"/>
+  <text x="250" y="72" text-anchor="middle" class="box-title">Client �</text>
+  <text x="250" y="94" text-anchor="middle" class="sub">� / ��</text>
+
+  <rect x="100" y="120" width="300" height="48" rx="8" fill="#ffffff" stroke="#2f6fed" stroke-width="1.8"/>
+  <text x="250" y="150" text-anchor="middle" class="node">run_data_collection.py</text>
+
+  <line x1="250" y1="168" x2="250" y2="198" stroke="#2f6fed" stroke-width="2"/>
+  <polygon points="250,206 244,194 256,194" fill="#2f6fed"/>
+
+  <rect x="100" y="206" width="300" height="48" rx="8" fill="#ffffff" stroke="#2f6fed" stroke-width="1.8"/>
+  <text x="250" y="236" text-anchor="middle" class="node">DataCollectionAgent</text>
+
+  <line x1="250" y1="254" x2="250" y2="284" stroke="#2f6fed" stroke-width="2"/>
+  <polygon points="250,292 244,280 256,280" fill="#2f6fed"/>
+
+  <rect x="100" y="292" width="300" height="48" rx="8" fill="#ffffff" stroke="#2f6fed" stroke-width="1.8"/>
+  <text x="250" y="322" text-anchor="middle" class="node">IsaacSimRpcRobot</text>
+
+  <line x1="250" y1="340" x2="250" y2="370" stroke="#2f6fed" stroke-width="2"/>
+  <polygon points="250,378 244,366 256,366" fill="#2f6fed"/>
+
+  <rect x="100" y="378" width="300" height="56" rx="8" fill="#dce9ff" stroke="#2f6fed" stroke-width="2"/>
+  <text x="250" y="412" text-anchor="middle" class="node">RpcClient</text>
+
+  <!-- Server Process -->
+  <rect x="640" y="40" width="420" height="440" rx="12" fill="#f3fbf6" stroke="#1f8a4c" stroke-width="2.5"/>
+  <text x="850" y="72" text-anchor="middle" class="box-title">Server �</text>
+  <text x="850" y="94" text-anchor="middle" class="sub">Isaac ;�gL</text>
+
+  <rect x="700" y="120" width="300" height="48" rx="8" fill="#ffffff" stroke="#1f8a4c" stroke-width="1.8"/>
+  <text x="850" y="150" text-anchor="middle" class="node">data_collector_server.py</text>
+
+  <line x1="850" y1="168" x2="850" y2="198" stroke="#1f8a4c" stroke-width="2"/>
+  <polygon points="850,206 844,194 856,194" fill="#1f8a4c"/>
+
+  <rect x="700" y="206" width="300" height="56" rx="8" fill="#d9f2e4" stroke="#1f8a4c" stroke-width="2"/>
+  <text x="850" y="240" text-anchor="middle" class="node">GrpcServer :50051</text>
+
+  <line x1="850" y1="262" x2="850" y2="292" stroke="#1f8a4c" stroke-width="2"/>
+  <polygon points="850,300 844,288 856,288" fill="#1f8a4c"/>
+
+  <rect x="700" y="300" width="300" height="48" rx="8" fill="#ffffff" stroke="#1f8a4c" stroke-width="1.8"/>
+  <text x="850" y="330" text-anchor="middle" class="node">CommandController</text>
+
+  <line x1="850" y1="348" x2="850" y2="378" stroke="#1f8a4c" stroke-width="2"/>
+  <polygon points="850,386 844,374 856,374" fill="#1f8a4c"/>
+
+  <rect x="700" y="386" width="300" height="56" rx="8" fill="#ffffff" stroke="#1f8a4c" stroke-width="1.8"/>
+  <text x="850" y="412" text-anchor="middle" class="node">UIBuilder + cuRobo</text>
+  <text x="850" y="430" text-anchor="middle" class="sub">+ Isaac Sim</text>
+
+  <!-- gRPC bridge -->
+  <line x1="400" y1="406" x2="700" y2="234" stroke="#0b5fff" stroke-width="2.5"/>
+  <polygon points="700,234 688,230 692,242" fill="#0b5fff"/>
+  <polygon points="400,406 412,410 408,398" fill="#0b5fff"/>
+
+  <rect x="470" y="290" width="200" height="54" rx="8" fill="#ffffff" stroke="#0b5fff" stroke-width="2"/>
+  <text x="570" y="312" text-anchor="middle" class="arrow-label">protobuf / aimdk</text>
+  <text x="570" y="332" text-anchor="middle" class="arrow-label">localhost:50051</text>
+</svg>

@@ -1,0 +1,797 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "ERSI collection scene json (scenes/<scene>.json)",
+ "description": "Where a task happens: background, workspaces, robot, objects, randomisation, recording. Check: python3 skills/collect-episodes/task_schema.py <file>",
+ "type": "object",
+ "properties": {
+  "scene": {
+   "type": "object",
+   "properties": {
+    "scene_usd": {
+     "type": [
+      "string",
+      "array"
+     ],
+     "description": "background/<key>/background.usda, <key> in scripts/backgrounds.json"
+    },
+    "scene_id": {
+     "type": "string"
+    },
+    "scene_info_dir": {
+     "type": "string"
+    },
+    "function_space_objects": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "object",
+      "properties": {
+       "position": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       },
+       "quaternion": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 4,
+        "maxItems": 4,
+        "description": "wxyz"
+       },
+       "size": {
+        "type": "array",
+        "items": {
+         "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+       },
+       "material_obj_prim": {
+        "type": "object"
+       },
+       "poses": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "properties": {
+          "position": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          },
+          "quaternion": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 4,
+           "maxItems": 4,
+           "description": "wxyz"
+          },
+          "random": {
+           "type": "object",
+           "properties": {
+            "delta_position": {
+             "type": "array",
+             "items": {
+              "type": "number"
+             },
+             "minItems": 3,
+             "maxItems": 3
+            },
+            "delta_angle": {
+             "type": "number"
+            }
+           },
+           "additionalProperties": false
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "position",
+          "quaternion"
+         ]
+        }
+       }
+      },
+      "if": {
+       "required": [
+        "poses"
+       ]
+      },
+      "then": {},
+      "else": {
+       "required": [
+        "position",
+        "quaternion",
+        "size"
+       ]
+      },
+      "description": "area mode: position + quaternion + size, objects placed anywhere inside; pose mode: poses, one is drawn"
+     }
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "scene_usd",
+    "scene_id",
+    "function_space_objects"
+   ]
+  },
+  "origin": {
+   "type": "object",
+   "properties": {
+    "position": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "quaternion": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 4,
+     "maxItems": 4,
+     "description": "wxyz"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "position",
+    "quaternion"
+   ]
+  },
+  "robot": {
+   "type": "object",
+   "properties": {
+    "robot_cfg": {
+     "type": "string"
+    },
+    "arm": {
+     "type": "string"
+    },
+    "robot_id": {
+     "type": "string"
+    },
+    "robot_init_pose": {
+     "type": "object",
+     "properties": {
+      "position": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "quaternion": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 4,
+       "maxItems": 4,
+       "description": "wxyz"
+      },
+      "random": {
+       "type": "object",
+       "properties": {
+        "delta_position": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         },
+         "minItems": 3,
+         "maxItems": 3
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "additionalProperties": false,
+     "required": [
+      "position",
+      "quaternion"
+     ]
+    },
+    "init_arm_pose": {
+     "type": "object"
+    },
+    "init_arm_pose_noise": {
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "robot_cfg",
+    "robot_init_pose"
+   ]
+  },
+  "objects": {
+   "type": "object",
+   "properties": {
+    "task_related_objects": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "object_id"
+      ],
+      "properties": {
+       "object_id": {
+        "type": "string"
+       },
+       "data_info_dir": {
+        "type": "string"
+       },
+       "candidate_objects": {
+        "type": "array"
+       },
+       "workspace_id": {
+        "type": "string"
+       },
+       "sub_workspace": {
+        "type": "object"
+       },
+       "angle_constraint": {
+        "type": "object"
+       },
+       "extent": {
+        "type": "number"
+       },
+       "english_semantic_name": {
+        "type": "string"
+       },
+       "chinese_semantic_name": {
+        "type": "string"
+       },
+       "mass": {
+        "type": "number"
+       },
+       "interaction": {
+        "type": "object"
+       }
+      },
+      "description": "more placement fields: source/data_collection/TASK_CONFIG_GUIDE.md §objects"
+     }
+    },
+    "scene_objects": {
+     "type": "array"
+    },
+    "fix_objects": {
+     "type": "array"
+    },
+    "attach_objects": {
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "constraints": {
+     "type": [
+      "object",
+      "null"
+     ]
+    },
+    "fix_pose_random": {
+     "type": "object",
+     "properties": {
+      "shared": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "each": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "task_related_objects"
+   ]
+  },
+  "workspaces": {
+   "type": "object"
+  },
+  "generalization": {
+   "type": "object",
+   "properties": {
+    "in_domain": {
+     "type": "object",
+     "properties": {
+      "lights": {
+       "type": "object"
+      },
+      "camera": {
+       "type": "object",
+       "properties": {
+        "x": {
+         "type": "number"
+        },
+        "y": {
+         "type": "number"
+        },
+        "z": {
+         "type": "number"
+        },
+        "roll": {
+         "type": "number"
+        },
+        "pitch": {
+         "type": "number"
+        },
+        "yaw": {
+         "type": "number"
+        }
+       },
+       "additionalProperties": false
+      },
+      "init_base": {
+       "type": "object",
+       "properties": {
+        "delta_position": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         },
+         "minItems": 3,
+         "maxItems": 3
+        }
+       },
+       "additionalProperties": false,
+       "required": [
+        "delta_position"
+       ]
+      },
+      "init_joint": {
+       "type": "object",
+       "properties": {
+        "thresh": {
+         "type": "number"
+        }
+       },
+       "additionalProperties": false,
+       "required": [
+        "thresh"
+       ]
+      },
+      "sub_workspace": {
+       "type": "object"
+      },
+      "range_scale": {
+       "type": "number"
+      },
+      "candidate_objects": {
+       "type": "object"
+      }
+     },
+     "additionalProperties": false
+    },
+    "ood": {
+     "type": "object",
+     "properties": {
+      "light": {
+       "type": "object",
+       "properties": {
+        "lights": {
+         "type": "object"
+        },
+        "camera": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number"
+          },
+          "y": {
+           "type": "number"
+          },
+          "z": {
+           "type": "number"
+          },
+          "roll": {
+           "type": "number"
+          },
+          "pitch": {
+           "type": "number"
+          },
+          "yaw": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false
+        },
+        "init_base": {
+         "type": "object",
+         "properties": {
+          "delta_position": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "delta_position"
+         ]
+        },
+        "init_joint": {
+         "type": "object",
+         "properties": {
+          "thresh": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "thresh"
+         ]
+        },
+        "sub_workspace": {
+         "type": "object"
+        },
+        "range_scale": {
+         "type": "number"
+        },
+        "candidate_objects": {
+         "type": "object"
+        }
+       },
+       "additionalProperties": false
+      },
+      "camera_pose": {
+       "type": "object",
+       "properties": {
+        "lights": {
+         "type": "object"
+        },
+        "camera": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number"
+          },
+          "y": {
+           "type": "number"
+          },
+          "z": {
+           "type": "number"
+          },
+          "roll": {
+           "type": "number"
+          },
+          "pitch": {
+           "type": "number"
+          },
+          "yaw": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false
+        },
+        "init_base": {
+         "type": "object",
+         "properties": {
+          "delta_position": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "delta_position"
+         ]
+        },
+        "init_joint": {
+         "type": "object",
+         "properties": {
+          "thresh": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "thresh"
+         ]
+        },
+        "sub_workspace": {
+         "type": "object"
+        },
+        "range_scale": {
+         "type": "number"
+        },
+        "candidate_objects": {
+         "type": "object"
+        }
+       },
+       "additionalProperties": false
+      },
+      "robot_initial_pose": {
+       "type": "object",
+       "properties": {
+        "lights": {
+         "type": "object"
+        },
+        "camera": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number"
+          },
+          "y": {
+           "type": "number"
+          },
+          "z": {
+           "type": "number"
+          },
+          "roll": {
+           "type": "number"
+          },
+          "pitch": {
+           "type": "number"
+          },
+          "yaw": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false
+        },
+        "init_base": {
+         "type": "object",
+         "properties": {
+          "delta_position": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "delta_position"
+         ]
+        },
+        "init_joint": {
+         "type": "object",
+         "properties": {
+          "thresh": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "thresh"
+         ]
+        },
+        "sub_workspace": {
+         "type": "object"
+        },
+        "range_scale": {
+         "type": "number"
+        },
+        "candidate_objects": {
+         "type": "object"
+        }
+       },
+       "additionalProperties": false
+      },
+      "object_position": {
+       "type": "object",
+       "properties": {
+        "lights": {
+         "type": "object"
+        },
+        "camera": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number"
+          },
+          "y": {
+           "type": "number"
+          },
+          "z": {
+           "type": "number"
+          },
+          "roll": {
+           "type": "number"
+          },
+          "pitch": {
+           "type": "number"
+          },
+          "yaw": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false
+        },
+        "init_base": {
+         "type": "object",
+         "properties": {
+          "delta_position": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "delta_position"
+         ]
+        },
+        "init_joint": {
+         "type": "object",
+         "properties": {
+          "thresh": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "thresh"
+         ]
+        },
+        "sub_workspace": {
+         "type": "object"
+        },
+        "range_scale": {
+         "type": "number"
+        },
+        "candidate_objects": {
+         "type": "object"
+        }
+       },
+       "additionalProperties": false
+      },
+      "unseen_object": {
+       "type": "object",
+       "properties": {
+        "lights": {
+         "type": "object"
+        },
+        "camera": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number"
+          },
+          "y": {
+           "type": "number"
+          },
+          "z": {
+           "type": "number"
+          },
+          "roll": {
+           "type": "number"
+          },
+          "pitch": {
+           "type": "number"
+          },
+          "yaw": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false
+        },
+        "init_base": {
+         "type": "object",
+         "properties": {
+          "delta_position": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "delta_position"
+         ]
+        },
+        "init_joint": {
+         "type": "object",
+         "properties": {
+          "thresh": {
+           "type": "number"
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "thresh"
+         ]
+        },
+        "sub_workspace": {
+         "type": "object"
+        },
+        "range_scale": {
+         "type": "number"
+        },
+        "candidate_objects": {
+         "type": "object"
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "additionalProperties": false,
+   "description": "in_domain is always applied; ood.<axis> is added when ERSIBENCH_OOD_AXES names it"
+  },
+  "recording_setting": {
+   "type": "object",
+   "properties": {
+    "camera_list": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "fps": {
+     "type": "number"
+    },
+    "num_of_episode": {
+     "type": "integer"
+    },
+    "num_of_success": {
+     "type": "integer"
+    },
+    "noised_probability": {
+     "type": "number"
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "camera_list",
+    "fps",
+    "num_of_episode"
+   ]
+  }
+ },
+ "additionalProperties": false,
+ "required": [
+  "scene",
+  "origin",
+  "robot",
+  "objects",
+  "recording_setting"
+ ],
+ "$defs": {}
+}
